@@ -78,6 +78,21 @@ button:active { transform: translateY(1px); }
   backdrop-filter: blur(4px);
   pointer-events: none;
 }
+.brand-row {
+  display: flex;
+  align-items: center;
+  gap: .45rem;
+  min-width: 0;
+}
+
+.feisk-logo {
+  display: block;
+  width: auto;
+  height: clamp(.64rem, 1.2vw, .8rem);
+  object-fit: contain;
+  flex: 0 0 auto;
+}
+
 .game-kicker {
   color: var(--gold);
   font-size: clamp(.64rem, 1.2vw, .8rem);
@@ -410,6 +425,15 @@ body.is-mobile .level-title-overlay {
   max-width: 43vw;
   padding: .38rem .5rem;
 }
+
+body.is-mobile .brand-row {
+  gap: .32rem;
+}
+
+body.is-mobile .feisk-logo {
+  height: .72rem;
+}
+
 
 body.is-mobile .stats-overlay {
   top: calc(.45rem + env(safe-area-inset-top));

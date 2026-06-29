@@ -82,3 +82,15 @@ Browsers require a user interaction before playing audio, so the game unlocks so
 ## UI update
 
 The clue footer now sits directly beneath the 16:9 game level instead of overlaying the canvas. This keeps the room/map fully visible while preserving the horizontal clue list on desktop and mobile.
+
+
+## Logo placement
+
+The top-left level title overlay now expects this logo file:
+
+```text
+assets/ui/Feisk Logo.png
+```
+
+Use that exact filename, including the space and capital letters, or update the `src` in `index.html`.
+The logo is styled to match the visual height of the game title text.

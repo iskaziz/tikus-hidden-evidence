@@ -94,3 +94,51 @@ assets/ui/Feisk Logo.png
 
 Use that exact filename, including the space and capital letters, or update the `src` in `index.html`.
 The logo is styled to match the visual height of the game title text.
+
+
+## Logo size update
+
+The Feisk logo has been enlarged. It now uses:
+
+```css
+height: clamp(1.8rem, 4vw, 3rem);
+```
+
+Mobile uses a smaller responsive size so it does not cover the play area.
+
+
+## Fun features added
+
+This build adds:
+- Room intro card before the timer starts.
+- Hint button with limited hints per level.
+- Wrong-click red flash and feedback toast.
+- Combo scoring for quick accurate clue finding.
+- Time bonus and star rating on level completion.
+- Evidence report after each completed room.
+- Final evidence board after all rooms.
+- Small optional mouse distraction bonus.
+- Existing clue click, level-complete, and time-up sounds remain included.
+
+Timer begins only after pressing **Start Search** on the room intro card.
+
+
+## Found evidence popup update
+
+When a clue is found, the confirmation now appears as a dedicated **Found evidence** popup at the bottom-right of the game level. It fades away automatically and reappears for each newly found clue.
+
+
+## Restart from beginning
+
+After the final level is completed and the Investigation Complete screen appears, the final action button now says **Start From Beginning**. Pressing it resets completion tracking and returns to the first room.
+
+
+## Hidden editor access
+
+Editor controls are hidden by default. To unlock Editor Mode:
+
+1. Click/tap the Feisk logo in the top-left 3 times.
+2. Enter code `0707` on the keypad.
+3. Editor Mode opens.
+
+The **E** key now exits Editor Mode only after it has been unlocked; it no longer opens the editor directly.

@@ -28,6 +28,18 @@ const nextLevelButton = document.getElementById("nextLevelButton");
 const editorHelpOverlay = document.getElementById("editorHelpOverlay");
 const editorModeLabel = document.getElementById("editorModeLabel");
 
+const roomIntroOverlay = document.getElementById("roomIntroOverlay");
+const introRoomName = document.getElementById("introRoomName");
+const introRoomText = document.getElementById("introRoomText");
+const startRoomButton = document.getElementById("startRoomButton");
+const feedbackToast = document.getElementById("feedbackToast");
+const foundEvidencePopup = document.getElementById("foundEvidencePopup");
+const foundEvidenceName = document.getElementById("foundEvidenceName");
+const foundEvidenceDetail = document.getElementById("foundEvidenceDetail");
+const levelReport = document.getElementById("levelReport");
+const hintButton = document.getElementById("hintButton");
+const hintCountElement = document.getElementById("hintCount");
+
 const exportModal = document.getElementById("exportModal");
 const exportText = document.getElementById("exportText");
 const exportStatus = document.getElementById("exportStatus");
@@ -41,10 +53,25 @@ const canvasFrame = document.getElementById("canvasFrame");
 const mobileOrientationOverlay = document.getElementById("mobileOrientationOverlay");
 const rotateScreenButton = document.getElementById("rotateScreenButton");
 
+const feiskLogoButton = document.getElementById("feiskLogoButton");
+const editorKeypadModal = document.getElementById("editorKeypadModal");
+const editorCodeDisplay = document.getElementById("editorCodeDisplay");
+const editorKeypadStatus = document.getElementById("editorKeypadStatus");
+const closeEditorKeypadButton = document.getElementById("closeEditorKeypadButton");
+const clearEditorCodeButton = document.getElementById("clearEditorCodeButton");
+const submitEditorCodeButton = document.getElementById("submitEditorCodeButton");
+
 const BASE_WIDTH = GAME_DATA.settings.baseWidth;
 const BASE_HEIGHT = GAME_DATA.settings.baseHeight;
 const CLUE_SCALE = GAME_DATA.settings.clueScale || 1;
 const TIMER_DURATION_SECONDS = Number(GAME_DATA.settings.timerDurationSeconds || 20);
+const HINTS_PER_LEVEL = Number(GAME_DATA.settings.hintsPerLevel || 3);
+const HINT_PENALTY = Number(GAME_DATA.settings.hintPenalty || 50);
+const WRONG_CLICK_PENALTY = Number(GAME_DATA.settings.wrongClickPenalty || 10);
+const TIME_BONUS_PER_SECOND = Number(GAME_DATA.settings.timeBonusPerSecond || 10);
+const COMBO_BONUS_STEP = Number(GAME_DATA.settings.comboBonusStep || 25);
+const COMBO_WINDOW_SECONDS = Number(GAME_DATA.settings.comboWindowSeconds || 4);
+const MOUSE_BONUS = Number(GAME_DATA.settings.mouseBonus || 25);
 const SOUND_PATHS = {
   clueFound: "assets/audio/clue_twang.wav",
   levelComplete: "assets/audio/level_complete_chime.wav",
@@ -52,6 +79,8 @@ const SOUND_PATHS = {
 };
 const STORAGE_KEY = "TIKUS_HIDDEN_EVIDENCE_EDITOR_DRAFT_V1";
 const ZONE_TYPES = ["floor", "table", "counter", "chair", "sofa", "wall"];
+const EDITOR_ACCESS_CODE = "0707";
+const LOGO_TAP_WINDOW_MS = 1400;
 
 canvas.width = BASE_WIDTH;
 canvas.height = BASE_HEIGHT;
@@ -74,6 +103,34 @@ const gameState = {
   runtimeClues: [],
   score: 0,
   wrongClicks: 0,
+  hintsRemaining: HINTS_PER_LEVEL,
+  comboStreak: 0,
+  lastFoundAt: 0,
+  currentLevelTimeBonus: 0,
+  currentLevelStars: 0,
+  currentLevelCompletedClues: [],
+  foundLevelIds: new Set(),
+  hintPulseUntil: 0,
+  hintedClueId: null,
+  wrongFlashUntil: 0,
+  toastUntil: 0,
+  toastText: "",
+  toastKind: "",
+  foundEvidencePopupTimeout: null,
+  editorUnlocked: false,
+  logoTapCount: 0,
+  lastLogoTapAt: 0,
+  editorCodeInput: "",
+  mouse: {
+    active: false,
+    x: -80,
+    y: 620,
+    width: 42,
+    height: 18,
+    speed: 90,
+    direction: 1,
+    bonusAvailable: true
+  },
   timerRemaining: TIMER_DURATION_SECONDS,
   timerIntervalId: null,
   timerLastTick: 0,
@@ -112,6 +169,23 @@ function bindEvents() {
   if (downloadLevelButton) downloadLevelButton.addEventListener("click", () => downloadTextFile(`${getCurrentLevel().id}_level_export.js`, buildCurrentLevelExport()));
   if (closeExportButton) closeExportButton.addEventListener("click", closeExportPanel);
   if (rotateScreenButton) rotateScreenButton.addEventListener("click", handleRotateScreenButton);
+  if (feiskLogoButton) {
+    feiskLogoButton.addEventListener("click", handleLogoSecretTap);
+    feiskLogoButton.addEventListener("keydown", (event) => {
+      if (event.key === "Enter" || event.key === " ") {
+        event.preventDefault();
+        handleLogoSecretTap();
+      }
+    });
+  }
+  if (closeEditorKeypadButton) closeEditorKeypadButton.addEventListener("click", closeEditorKeypad);
+  if (clearEditorCodeButton) clearEditorCodeButton.addEventListener("click", clearEditorCode);
+  if (submitEditorCodeButton) submitEditorCodeButton.addEventListener("click", submitEditorCode);
+  document.querySelectorAll("[data-keypad-number]").forEach((button) => {
+    button.addEventListener("click", () => addEditorCodeDigit(button.dataset.keypadNumber));
+  });
+  if (startRoomButton) startRoomButton.addEventListener("click", beginCurrentRoomSearch);
+  if (hintButton) hintButton.addEventListener("click", useHint);
 
   window.addEventListener("pointerdown", unlockGameAudio, { once: true });
   window.addEventListener("keydown", unlockGameAudio, { once: true });
@@ -127,6 +201,11 @@ function bindEvents() {
 }
 
 function handleEditorButtonAction(action) {
+  if (!gameState.editorUnlocked && action !== "toggleEditor") return;
+  if (action === "toggleEditor" && !gameState.editorUnlocked) {
+    openEditorKeypad();
+    return;
+  }
   switch (action) {
     case "toggleEditor": toggleEditorMode(); break;
     case "clueMode": setEditorTool("clue"); break;
@@ -148,8 +227,10 @@ function handleKeyDown(event) {
   const lowerKey = key.toLowerCase();
 
   if (lowerKey === "e") {
-    event.preventDefault();
-    toggleEditorMode();
+    if (gameState.editorMode) {
+      event.preventDefault();
+      toggleEditorMode();
+    }
     return;
   }
 
@@ -351,10 +432,24 @@ function collectImagePaths() {
 function startLevel(levelIndex) {
   syncRuntimeCluesIntoEditorLevel();
   gameState.currentLevelIndex = levelIndex;
-  gameState.mode = "playing";
+  gameState.mode = "intro";
   gameState.foundClues = new Set();
   gameState.score = 0;
   gameState.wrongClicks = 0;
+  gameState.hintsRemaining = HINTS_PER_LEVEL;
+  gameState.comboStreak = 0;
+  gameState.lastFoundAt = 0;
+  gameState.currentLevelTimeBonus = 0;
+  gameState.currentLevelStars = 0;
+  gameState.currentLevelCompletedClues = [];
+  gameState.hintPulseUntil = 0;
+  gameState.hintedClueId = null;
+  gameState.wrongFlashUntil = 0;
+  gameState.toastUntil = 0;
+  gameState.toastText = "";
+  gameState.toastKind = "";
+  hideFoundEvidencePopup();
+  resetMouseDistraction();
   resetLevelTimer();
   gameState.selectedClueId = null;
   gameState.selectedZoneId = null;
@@ -363,8 +458,17 @@ function startLevel(levelIndex) {
   buildRuntimeCluesForCurrentLevel();
   hideLoadingOverlay();
   hideLevelCompleteOverlay();
+  showRoomIntroOverlay();
   updateUI();
   updateEditorOverlay();
+  render();
+}
+
+function beginCurrentRoomSearch() {
+  if (roomIntroOverlay) roomIntroOverlay.classList.add("hidden");
+  gameState.mode = "playing";
+  resetLevelTimer();
+  updateUI();
   startLevelTimer();
   render();
 }
@@ -447,8 +551,27 @@ function restartLevel() {
   startLevel(gameState.currentLevelIndex);
 }
 
+function restartGameFromBeginning() {
+  stopLevelTimer();
+  hideLevelCompleteOverlay();
+  if (roomIntroOverlay) roomIntroOverlay.classList.add("hidden");
+  if (exportModal) exportModal.classList.add("hidden");
+  gameState.foundLevelIds = new Set();
+  gameState.score = 0;
+  gameState.wrongClicks = 0;
+  gameState.comboStreak = 0;
+  gameState.lastFoundAt = 0;
+  startLevel(0);
+}
+
 function goToNextLevel() {
   syncRuntimeCluesIntoEditorLevel();
+
+  if (gameState.mode === "game_complete") {
+    restartGameFromBeginning();
+    return;
+  }
+
   const nextIndex = gameState.currentLevelIndex + 1;
   if (nextIndex >= editorData.levels.length) {
     gameState.mode = "game_complete";
@@ -472,6 +595,12 @@ function handleCanvasPointerDown(event) {
   }
 
   if (gameState.mode !== "playing") return;
+
+  if (checkMouseClick(point.x, point.y)) {
+    updateUI();
+    render();
+    return;
+  }
 
   const clickedClue = findClickedRuntimeClue(point.x, point.y);
   if (clickedClue) collectClue(clickedClue);
@@ -572,21 +701,252 @@ function clamp(value, min, max) {
 }
 
 function collectClue(runtimeClue) {
+  if (gameState.foundClues.has(runtimeClue.id)) return;
+
   gameState.foundClues.add(runtimeClue.id);
-  gameState.score += 100;
+
+  const now = Date.now();
+  if (gameState.lastFoundAt && (now - gameState.lastFoundAt) <= COMBO_WINDOW_SECONDS * 1000) {
+    gameState.comboStreak += 1;
+  } else {
+    gameState.comboStreak = 1;
+  }
+  gameState.lastFoundAt = now;
+
+  const comboBonus = gameState.comboStreak > 1 ? (gameState.comboStreak - 1) * COMBO_BONUS_STEP : 0;
+  gameState.score += 100 + comboBonus;
+  gameState.currentLevelCompletedClues.push(runtimeClue.source.name);
+
+  const link = getClueConnectionText(runtimeClue.source);
+  const comboText = comboBonus > 0 ? ` · Combo x${gameState.comboStreak} +${comboBonus}` : "";
+  showFoundEvidencePopup(runtimeClue.source.name, `${comboBonus > 0 ? `Combo x${gameState.comboStreak} +${comboBonus} · ` : ""}${link || "Case file updated"}`);
+
   playGameSound("clueFound");
 
   if (isLevelComplete()) {
-    gameState.mode = "level_complete";
-    stopLevelTimer();
-    showLevelCompleteOverlay();
-    window.setTimeout(() => playGameSound("levelComplete"), 120);
+    completeCurrentLevelSuccessfully();
   }
+}
+
+function completeCurrentLevelSuccessfully() {
+  gameState.mode = "level_complete";
+  stopLevelTimer();
+  const remainingSeconds = Math.ceil(gameState.timerRemaining);
+  gameState.currentLevelTimeBonus = Math.max(0, remainingSeconds * TIME_BONUS_PER_SECOND);
+  gameState.score += gameState.currentLevelTimeBonus;
+  gameState.currentLevelStars = calculateStars();
+  gameState.foundLevelIds.add(getCurrentLevel().id);
+  showLevelCompleteOverlay();
+  updateUI();
+  window.setTimeout(() => playGameSound("levelComplete"), 120);
 }
 
 function handleWrongClick() {
   gameState.wrongClicks += 1;
-  if (gameState.score > 0) gameState.score = Math.max(0, gameState.score - 10);
+  gameState.comboStreak = 0;
+  if (gameState.score > 0) gameState.score = Math.max(0, gameState.score - WRONG_CLICK_PENALTY);
+  flashWrongClick();
+  showFeedback(`Wrong click -${WRONG_CLICK_PENALTY}. Careful...`, "negative");
+}
+
+
+function useHint() {
+  if (gameState.mode !== "playing" || gameState.hintsRemaining <= 0) return;
+
+  const remaining = gameState.runtimeClues.filter((clue) => !gameState.foundClues.has(clue.id));
+  if (remaining.length === 0) return;
+
+  const clue = remaining[Math.floor(Math.random() * remaining.length)];
+  gameState.hintsRemaining -= 1;
+  gameState.score = Math.max(0, gameState.score - HINT_PENALTY);
+  gameState.hintedClueId = clue.id;
+  gameState.hintPulseUntil = Date.now() + 1800;
+  showFeedback(`Hint: look for ${clue.source.name} (-${HINT_PENALTY})`, "positive");
+  updateUI();
+  render();
+}
+
+function drawHintPulse() {
+  if (!gameState.hintedClueId || Date.now() > gameState.hintPulseUntil) return;
+  const clue = gameState.runtimeClues.find((item) => item.id === gameState.hintedClueId);
+  if (!clue || gameState.foundClues.has(clue.id)) return;
+
+  const pulse = 0.55 + Math.sin(Date.now() / 90) * 0.25;
+  ctx.save();
+  ctx.strokeStyle = `rgba(255, 220, 90, ${pulse})`;
+  ctx.lineWidth = 6;
+  ctx.setLineDash([12, 8]);
+  ctx.strokeRect(clue.hitbox.x - 8, clue.hitbox.y - 8, clue.hitbox.width + 16, clue.hitbox.height + 16);
+  ctx.restore();
+}
+
+
+function showFoundEvidencePopup(evidenceName, detailText = "Case file updated") {
+  if (!foundEvidencePopup) return;
+
+  if (gameState.foundEvidencePopupTimeout) {
+    window.clearTimeout(gameState.foundEvidencePopupTimeout);
+    gameState.foundEvidencePopupTimeout = null;
+  }
+
+  if (foundEvidenceName) foundEvidenceName.textContent = evidenceName;
+  if (foundEvidenceDetail) foundEvidenceDetail.textContent = detailText;
+
+  foundEvidencePopup.classList.remove("hidden", "show");
+  void foundEvidencePopup.offsetWidth;
+  foundEvidencePopup.classList.add("show");
+
+  gameState.foundEvidencePopupTimeout = window.setTimeout(() => {
+    hideFoundEvidencePopup();
+  }, 2300);
+}
+
+function hideFoundEvidencePopup() {
+  if (!foundEvidencePopup) return;
+  foundEvidencePopup.classList.remove("show");
+  foundEvidencePopup.classList.add("hidden");
+  if (gameState.foundEvidencePopupTimeout) {
+    window.clearTimeout(gameState.foundEvidencePopupTimeout);
+    gameState.foundEvidencePopupTimeout = null;
+  }
+}
+
+function getClueConnectionText(clue) {
+  if (clue.suspectTag) return `Possible link: ${clue.suspectTag}`;
+  const id = String(clue.id || "");
+  if (id.includes("lipstick")) return "Possible link: social guest";
+  if (id.includes("key") || id.includes("locked")) return "Possible link: locked access";
+  if (id.includes("medicine") || id.includes("vial") || id.includes("tea")) return "Possible link: wellness treatment";
+  if (id.includes("telephone") || id.includes("wire")) return "Possible link: communication sabotage";
+  if (id.includes("footprint") || id.includes("muddy")) return "Possible link: outside route";
+  if (id.includes("letter") || id.includes("blackmail") || id.includes("diary")) return "Possible link: hidden motive";
+  return "Evidence logged";
+}
+
+function flashWrongClick() {
+  gameState.wrongFlashUntil = Date.now() + 280;
+  if (canvasFrame) {
+    canvasFrame.classList.remove("wrong-flash");
+    void canvasFrame.offsetWidth;
+    canvasFrame.classList.add("wrong-flash");
+    window.setTimeout(() => canvasFrame.classList.remove("wrong-flash"), 300);
+  }
+}
+
+function showFeedback(text, kind = "") {
+  gameState.toastText = text;
+  gameState.toastKind = kind;
+  gameState.toastUntil = Date.now() + 1800;
+  updateFeedbackToast();
+}
+
+function updateFeedbackToast() {
+  if (!feedbackToast) return;
+  if (!gameState.toastText || Date.now() > gameState.toastUntil) {
+    feedbackToast.classList.add("hidden");
+    feedbackToast.textContent = "";
+    feedbackToast.classList.remove("positive", "negative");
+    return;
+  }
+  feedbackToast.textContent = gameState.toastText;
+  feedbackToast.classList.remove("hidden", "positive", "negative");
+  if (gameState.toastKind) feedbackToast.classList.add(gameState.toastKind);
+}
+
+function updateWrongFlash() {
+  if (!canvasFrame) return;
+  if (gameState.wrongFlashUntil && Date.now() > gameState.wrongFlashUntil) {
+    canvasFrame.classList.remove("wrong-flash");
+    gameState.wrongFlashUntil = 0;
+  }
+}
+
+function calculateStars() {
+  const remaining = Math.ceil(gameState.timerRemaining);
+  let stars = 1;
+  if (gameState.wrongClicks <= 3 && remaining >= Math.ceil(TIMER_DURATION_SECONDS * 0.25)) stars = 2;
+  if (gameState.wrongClicks === 0 && gameState.hintsRemaining === HINTS_PER_LEVEL && remaining >= Math.ceil(TIMER_DURATION_SECONDS * 0.4)) stars = 3;
+  return stars;
+}
+
+function getStarText(stars) {
+  return "★".repeat(Math.max(1, stars)) + "☆".repeat(Math.max(0, 3 - stars));
+}
+
+function resetMouseDistraction() {
+  const yOptions = [560, 600, 635];
+  const direction = Math.random() > 0.5 ? 1 : -1;
+  gameState.mouse = {
+    active: true,
+    x: direction === 1 ? -70 : BASE_WIDTH + 70,
+    y: yOptions[Math.floor(Math.random() * yOptions.length)],
+    width: 42,
+    height: 18,
+    speed: 70 + Math.random() * 60,
+    direction,
+    lastUpdate: Date.now(),
+    bonusAvailable: true
+  };
+}
+
+function updateMouseDistraction() {
+  if (!gameState.mouse.active || gameState.mode !== "playing") return;
+  const now = Date.now();
+  const elapsed = Math.min(0.08, (now - (gameState.mouse.lastUpdate || now)) / 1000);
+  gameState.mouse.lastUpdate = now;
+  gameState.mouse.x += gameState.mouse.speed * gameState.mouse.direction * elapsed;
+  if ((gameState.mouse.direction === 1 && gameState.mouse.x > BASE_WIDTH + 80) ||
+      (gameState.mouse.direction === -1 && gameState.mouse.x < -100)) {
+    resetMouseDistraction();
+  }
+}
+
+function drawMouseDistraction() {
+  if (!gameState.mouse.active || gameState.mode !== "playing") return;
+  const mouse = gameState.mouse;
+  ctx.save();
+  ctx.translate(mouse.x, mouse.y);
+  if (mouse.direction < 0) ctx.scale(-1, 1);
+  ctx.fillStyle = "rgba(35, 25, 20, .72)";
+  ctx.beginPath();
+  ctx.ellipse(0, 0, mouse.width / 2, mouse.height / 2, 0, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.fillStyle = "rgba(20, 14, 10, .9)";
+  ctx.beginPath();
+  ctx.arc(mouse.width / 2 - 4, -3, 4, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.strokeStyle = "rgba(35, 25, 20, .7)";
+  ctx.lineWidth = 3;
+  ctx.beginPath();
+  ctx.moveTo(-mouse.width / 2, 0);
+  ctx.quadraticCurveTo(-mouse.width / 2 - 20, 6, -mouse.width / 2 - 32, -2);
+  ctx.stroke();
+  ctx.restore();
+}
+
+function checkMouseClick(x, y) {
+  const mouse = gameState.mouse;
+  if (!mouse.active || !mouse.bonusAvailable) return false;
+  const rect = {
+    x: mouse.x - mouse.width / 2 - 8,
+    y: mouse.y - mouse.height / 2 - 8,
+    width: mouse.width + 16,
+    height: mouse.height + 16
+  };
+  if (!isPointInsideRect(x, y, rect)) return false;
+  mouse.bonusAvailable = false;
+  mouse.active = false;
+  gameState.score += MOUSE_BONUS;
+  showFeedback(`Mouse spotted! Bonus +${MOUSE_BONUS}`, "positive");
+  return true;
+}
+
+function showRoomIntroOverlay() {
+  const level = getCurrentLevel();
+  if (!roomIntroOverlay) return;
+  if (introRoomName) introRoomName.textContent = level.name;
+  if (introRoomText) introRoomText.textContent = level.introText || "Search the room before time runs out.";
+  roomIntroOverlay.classList.remove("hidden");
 }
 
 function resetLevelTimer() {
@@ -647,7 +1007,7 @@ function updateTimerUI() {
 function handleTimeUp() {
   stopLevelTimer();
   gameState.timerRemaining = 0;
-  playGameSound("timeUp");
+  if (!isLevelComplete()) playGameSound("timeUp");
   gameState.mode = "time_up";
   updateTimerUI();
   showTimeUpOverlay();
@@ -663,6 +1023,8 @@ function updateUI() {
   if (levelNameElement) levelNameElement.textContent = level.name;
   if (scoreValueElement) scoreValueElement.textContent = String(gameState.score);
   if (wrongClickValueElement) wrongClickValueElement.textContent = String(gameState.wrongClicks);
+  if (hintCountElement) hintCountElement.textContent = String(gameState.hintsRemaining);
+  if (hintButton) hintButton.disabled = gameState.hintsRemaining <= 0 || gameState.mode !== "playing";
   updateTimerUI();
   updateClueList();
 }
@@ -682,12 +1044,82 @@ function updateClueList() {
   });
 }
 
+
+function handleLogoSecretTap() {
+  const now = Date.now();
+  if (now - gameState.lastLogoTapAt > LOGO_TAP_WINDOW_MS) {
+    gameState.logoTapCount = 0;
+  }
+
+  gameState.logoTapCount += 1;
+  gameState.lastLogoTapAt = now;
+
+  if (gameState.logoTapCount >= 3) {
+    gameState.logoTapCount = 0;
+    openEditorKeypad();
+  }
+}
+
+function openEditorKeypad() {
+  gameState.editorCodeInput = "";
+  updateEditorCodeDisplay();
+  if (editorKeypadStatus) editorKeypadStatus.textContent = "";
+  if (editorKeypadModal) editorKeypadModal.classList.remove("hidden");
+}
+
+function closeEditorKeypad() {
+  gameState.editorCodeInput = "";
+  if (editorKeypadModal) editorKeypadModal.classList.add("hidden");
+  if (editorKeypadStatus) editorKeypadStatus.textContent = "";
+}
+
+function addEditorCodeDigit(digit) {
+  if (!/^\d$/.test(String(digit))) return;
+  if (gameState.editorCodeInput.length >= 4) return;
+  gameState.editorCodeInput += String(digit);
+  updateEditorCodeDisplay();
+
+  if (gameState.editorCodeInput.length === 4) {
+    submitEditorCode();
+  }
+}
+
+function clearEditorCode() {
+  gameState.editorCodeInput = "";
+  updateEditorCodeDisplay();
+  if (editorKeypadStatus) editorKeypadStatus.textContent = "";
+}
+
+function updateEditorCodeDisplay() {
+  if (!editorCodeDisplay) return;
+  const entered = gameState.editorCodeInput.length;
+  editorCodeDisplay.textContent = "●".repeat(entered) + "○".repeat(Math.max(0, 4 - entered));
+}
+
+function submitEditorCode() {
+  if (gameState.editorCodeInput === EDITOR_ACCESS_CODE) {
+    gameState.editorUnlocked = true;
+    closeEditorKeypad();
+    if (!gameState.editorMode) toggleEditorMode();
+    return;
+  }
+
+  if (editorKeypadStatus) editorKeypadStatus.textContent = "Incorrect code.";
+  gameState.editorCodeInput = "";
+  updateEditorCodeDisplay();
+}
+
 function toggleEditorMode() {
+  if (!gameState.editorUnlocked && !gameState.editorMode) {
+    openEditorKeypad();
+    return;
+  }
   gameState.editorMode = !gameState.editorMode;
   if (gameState.editorMode) {
     stopLevelTimer();
     gameState.debugZones = false;
     hideLevelCompleteOverlay();
+    if (roomIntroOverlay) roomIntroOverlay.classList.add("hidden");
     gameState.mode = "playing";
   } else {
     syncRuntimeCluesIntoEditorLevel();
@@ -866,10 +1298,15 @@ function deleteSelectedZone() {
 function render() {
   clearCanvas();
   drawRoomBackground();
+  updateMouseDistraction();
+  drawMouseDistraction();
   drawClues();
   if (gameState.debugZones || gameState.editorTool === "zone") drawDebugPlacementZones();
   if (gameState.debugHitboxes || gameState.editorMode) drawDebugHitboxes();
   if (gameState.editorMode) drawEditorSelection();
+  drawHintPulse();
+  updateFeedbackToast();
+  updateWrongFlash();
   drawStatusText();
 }
 
@@ -1083,17 +1520,88 @@ function hideLoadingOverlay() {
   if (loadingOverlay) loadingOverlay.classList.add("hidden");
 }
 
+
+function buildLevelAssessmentText(level) {
+  const id = level.id || "";
+  if (id.includes("telephone")) return "The room suggests deliberate communication sabotage.";
+  if (id.includes("dining")) return "The interrupted meal now reads like a staged social performance.";
+  if (id.includes("orchid")) return "The trail points toward garden access and quiet movement through the retreat.";
+  if (id.includes("kitchen")) return "Service areas reveal who could move unseen behind the mansion's polished front.";
+  if (id.includes("office")) return "Paperwork and private records suggest motive, pressure, and concealed arrangements.";
+  if (id.includes("steam")) return "The wellness machinery feels less therapeutic and more like opportunity.";
+  if (id.includes("work")) return "The maintenance area hints at repair, cover-up, and practical access.";
+  return "The evidence in this room has been collected and added to the case file.";
+}
+
+function buildLevelReportHtml(level) {
+  const found = level.clues
+    .filter((clue) => gameState.foundClues.has(clue.id))
+    .map((clue) => `<li>✓ ${escapeHtml(clue.name)} — ${escapeHtml(getClueConnectionText(clue))}</li>`)
+    .join("");
+
+  return `
+    <div class="result-summary">
+      <div class="result-pill"><span>Rating</span><strong>${getStarText(gameState.currentLevelStars)}</strong></div>
+      <div class="result-pill"><span>Time Bonus</span><strong>+${gameState.currentLevelTimeBonus}</strong></div>
+      <div class="result-pill"><span>Wrong</span><strong>${gameState.wrongClicks}</strong></div>
+      <div class="result-pill"><span>Hints Left</span><strong>${gameState.hintsRemaining}</strong></div>
+      <div class="result-pill"><span>Score</span><strong>${gameState.score}</strong></div>
+    </div>
+    <strong>Evidence report:</strong>
+    <ul>${found}</ul>
+  `;
+}
+
+function buildFinalEvidenceBoardHtml() {
+  const rooms = editorData.levels.map((level) => {
+    const completed = gameState.foundLevelIds.has(level.id) ? "✓" : "•";
+    return `<li>${completed} <strong>${escapeHtml(level.name)}</strong> — ${escapeHtml(buildLevelAssessmentText(level))}</li>`;
+  }).join("");
+
+  return `
+    <strong>Final evidence board:</strong>
+    <ul>${rooms}</ul>
+    <p style="margin-top:.8rem;color:var(--muted)">Next recommended feature: add a suspect accusation screen that checks motive, access, and opportunity.</p>
+  `;
+}
+
+function escapeHtml(value) {
+  return String(value)
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#039;");
+}
+
 function showTimeUpOverlay() {
+  hideFoundEvidencePopup();
   if (!levelCompleteOverlay) return;
   levelCompleteOverlay.classList.remove("hidden");
   const heading = levelCompleteOverlay.querySelector("h2");
   const message = levelCompleteOverlay.querySelector("p");
   if (heading) heading.textContent = "Time's Up";
   if (message) message.textContent = "The evidence went cold. Restart the room and try again.";
+  if (levelReport) {
+    const missing = getCurrentLevel().clues
+      .filter((clue) => !gameState.foundClues.has(clue.id))
+      .map((clue) => `<li>${escapeHtml(clue.name)}</li>`)
+      .join("");
+    levelReport.innerHTML = `
+      <div class="result-summary">
+        <div class="result-pill"><span>Found</span><strong>${gameState.foundClues.size}/${getCurrentLevel().clues.length}</strong></div>
+        <div class="result-pill"><span>Wrong</span><strong>${gameState.wrongClicks}</strong></div>
+        <div class="result-pill"><span>Score</span><strong>${gameState.score}</strong></div>
+      </div>
+      <strong>Missing evidence:</strong>
+      <ul>${missing || "<li>None</li>"}</ul>
+    `;
+  }
   if (nextLevelButton) nextLevelButton.textContent = "Next Room";
 }
 
 function showLevelCompleteOverlay() {
+  hideFoundEvidencePopup();
   if (!levelCompleteOverlay) return;
   const level = getCurrentLevel();
   const finalLevel = gameState.currentLevelIndex >= editorData.levels.length - 1;
@@ -1101,23 +1609,30 @@ function showLevelCompleteOverlay() {
   const heading = levelCompleteOverlay.querySelector("h2");
   const message = levelCompleteOverlay.querySelector("p");
   if (heading) heading.textContent = `${level.name} Complete`;
-  if (message) message.textContent = "The evidence in this room has been collected.";
+  if (message) message.textContent = buildLevelAssessmentText(level);
+  if (levelReport) levelReport.innerHTML = buildLevelReportHtml(level);
   if (nextLevelButton) nextLevelButton.textContent = finalLevel ? "Finish Game" : "Next Room";
 }
 
 function showGameCompleteOverlay() {
+  hideFoundEvidencePopup();
   if (!levelCompleteOverlay) return;
   levelCompleteOverlay.classList.remove("hidden");
   const heading = levelCompleteOverlay.querySelector("h2");
   const message = levelCompleteOverlay.querySelector("p");
   if (heading) heading.textContent = "Investigation Complete";
-  if (message) message.textContent = "All available rooms have been investigated.";
-  if (nextLevelButton) nextLevelButton.style.display = "none";
+  if (message) message.textContent = "The final evidence board is ready. Review the rooms and decide who had motive, access, and opportunity.";
+  if (levelReport) levelReport.innerHTML = buildFinalEvidenceBoardHtml();
+  if (nextLevelButton) {
+    nextLevelButton.style.display = "";
+    nextLevelButton.textContent = "Start From Beginning";
+  }
 }
 
 function hideLevelCompleteOverlay() {
   if (!levelCompleteOverlay) return;
   levelCompleteOverlay.classList.add("hidden");
+  if (levelReport) levelReport.innerHTML = "";
   if (nextLevelButton) nextLevelButton.style.display = "";
 }
 

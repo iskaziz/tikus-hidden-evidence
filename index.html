@@ -15,7 +15,7 @@
 
           <div id="levelTitleOverlay" class="level-title-overlay">
             <div class="brand-row">
-              <img class="feisk-logo" src="assets/ui/Feisk Logo.png" alt="Feisk logo" />
+              <img id="feiskLogoButton" class="feisk-logo" src="assets/ui/Feisk Logo.png" alt="Feisk logo" role="button" tabindex="0" aria-label="Developer access" />
               <span class="game-kicker">TIKUS: Hidden Evidence</span>
             </div>
             <span id="levelName" class="level-name">Loading...</span>
@@ -43,10 +43,27 @@
             </div>
           </div>
 
+          <div id="roomIntroOverlay" class="room-intro-overlay hidden">
+            <div class="intro-card">
+              <span class="intro-kicker">New Room</span>
+              <h2 id="introRoomName">Room</h2>
+              <p id="introRoomText">Search the room before time runs out.</p>
+              <button id="startRoomButton" type="button">Start Search</button>
+            </div>
+          </div>
+
+          <div id="feedbackToast" class="feedback-toast hidden" aria-live="polite"></div>
+          <div id="foundEvidencePopup" class="found-evidence-popup hidden" aria-live="polite">
+            <span class="found-evidence-label">Found evidence</span>
+            <strong id="foundEvidenceName">Evidence</strong>
+            <small id="foundEvidenceDetail">Case file updated</small>
+          </div>
+
           <div id="levelCompleteOverlay" class="level-complete-overlay hidden">
             <div class="complete-card">
               <h2>Level Complete</h2>
               <p>The evidence in this room has been collected.</p>
+              <div id="levelReport" class="level-report"></div>
               <div class="button-row">
                 <button id="restartButton" type="button">Restart Level</button>
                 <button id="nextLevelButton" type="button">Next Room</button>
@@ -68,6 +85,7 @@
         <footer class="clue-footer" aria-label="Clues to find">
           <div class="clue-footer-title">Find</div>
           <ul id="clueList" class="clue-footer-list"></ul>
+          <button id="hintButton" class="hint-button" type="button" aria-label="Use a hint">Hint <span id="hintCount">3</span></button>
         </footer>
 
         <div class="mobile-editor-buttons" aria-label="Editor shortcuts">
@@ -84,6 +102,30 @@
       </div>
     </section>
   </main>
+
+  <div id="editorKeypadModal" class="editor-keypad-modal hidden" role="dialog" aria-modal="true" aria-labelledby="editorKeypadTitle">
+    <div class="editor-keypad-card">
+      <button id="closeEditorKeypadButton" class="icon-button keypad-close-button" type="button" aria-label="Close keypad">×</button>
+      <h2 id="editorKeypadTitle">Developer Access</h2>
+      <p>Enter access code to unlock Editor Mode.</p>
+      <div id="editorCodeDisplay" class="editor-code-display" aria-label="Entered code">••••</div>
+      <div class="editor-keypad-grid" aria-label="Numeric keypad">
+        <button type="button" data-keypad-number="1">1</button>
+        <button type="button" data-keypad-number="2">2</button>
+        <button type="button" data-keypad-number="3">3</button>
+        <button type="button" data-keypad-number="4">4</button>
+        <button type="button" data-keypad-number="5">5</button>
+        <button type="button" data-keypad-number="6">6</button>
+        <button type="button" data-keypad-number="7">7</button>
+        <button type="button" data-keypad-number="8">8</button>
+        <button type="button" data-keypad-number="9">9</button>
+        <button type="button" id="clearEditorCodeButton">Clear</button>
+        <button type="button" data-keypad-number="0">0</button>
+        <button type="button" id="submitEditorCodeButton">Enter</button>
+      </div>
+      <p id="editorKeypadStatus" class="editor-keypad-status" aria-live="polite"></p>
+    </div>
+  </div>
 
   <div id="exportModal" class="export-modal hidden" role="dialog" aria-modal="true" aria-labelledby="exportTitle">
     <div class="export-card">

@@ -12,6 +12,13 @@ const GAME_DATA = {
     baseHeight: 720,
     clueScale: 0.8,
     randomizeClueLocations: false,
+    mouseBonus: 25,
+    comboWindowSeconds: 4,
+    comboBonusStep: 25,
+    timeBonusPerSecond: 10,
+    wrongClickPenalty: 10,
+    hintPenalty: 50,
+    hintsPerLevel: 3,
     timerDurationSeconds: 20
   },
   levels: [

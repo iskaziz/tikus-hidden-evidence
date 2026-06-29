@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <title>TIKUS: Hidden Evidence</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <div class="page-shell">
+    <header class="game-header">
+      <div>
+        <p class="eyebrow">Samasihat Wellness Retreat</p>
+        <h1>TIKUS: Hidden Evidence</h1>
+      </div>
+
+      <div class="top-stats" aria-label="Game statistics">
+        <div class="stat-card">
+          <span class="stat-label">Room</span>
+          <strong id="levelName">Loading</strong>
+        </div>
+        <div class="stat-card">
+          <span class="stat-label">Score</span>
+          <strong id="scoreValue">0</strong>
+        </div>
+        <div class="stat-card">
+          <span class="stat-label">Wrong Clicks</span>
+          <strong id="wrongClickValue">0</strong>
+        </div>
+      </div>
+    </header>
+
+    <main class="game-layout">
+      <section class="stage-panel" aria-label="Hidden object room">
+        <div class="stage-wrapper">
+          <canvas id="gameCanvas" width="1280" height="720" aria-label="TIKUS hidden object canvas"></canvas>
+
+          <div id="loadingOverlay" class="canvas-overlay">
+            <div class="modal-card small-card">
+              <h2>Loading Evidence...</h2>
+              <p id="loadingText">Preparing the mansion rooms.</p>
+            </div>
+          </div>
+
+          <div id="levelCompleteOverlay" class="canvas-overlay hidden">
+            <div class="modal-card">
+              <p class="eyebrow">Investigation Update</p>
+              <h2 id="levelCompleteTitle">Level Complete</h2>
+              <p id="levelCompleteText">You found every clue in this room.</p>
+              <div class="modal-actions">
+                <button id="restartButton" type="button">Restart Room</button>
+                <button id="nextLevelButton" type="button">Next Room</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <aside class="side-panel" aria-label="Clue list and controls">
+        <section class="case-card">
+          <p class="eyebrow">Current Room</p>
+          <h2 id="roomTitle">Loading</h2>
+          <p id="roomIntro">Searching the retreat...</p>
+        </section>
+
+        <section class="case-card clue-card">
+          <div class="card-row">
+            <div>
+              <p class="eyebrow">Evidence List</p>
+              <h2>Find These Clues</h2>
+            </div>
+            <span id="progressValue" class="progress-pill">0 / 0</span>
+          </div>
+          <ul id="clueList" class="clue-list"></ul>
+        </section>
+
+        <section class="case-card controls-card">
+          <p class="eyebrow">Controls</p>
+          <button id="hintButton" type="button">Hint</button>
+          <button id="resetButton" type="button">Restart Room</button>
+          <button id="debugButton" type="button">Toggle Hitboxes</button>
+          <p class="hint-text">Tip: All placement coordinates live in <code>data.js</code>. Press <kbd>H</kbd> to show hitboxes.</p>
+        </section>
+      </aside>
+    </main>
+  </div>
+
+  <script src="data.js"></script>
+  <script src="game.js"></script>
+</body>
+</html>

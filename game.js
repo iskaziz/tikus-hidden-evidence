@@ -45,6 +45,11 @@ const BASE_WIDTH = GAME_DATA.settings.baseWidth;
 const BASE_HEIGHT = GAME_DATA.settings.baseHeight;
 const CLUE_SCALE = GAME_DATA.settings.clueScale || 1;
 const TIMER_DURATION_SECONDS = Number(GAME_DATA.settings.timerDurationSeconds || 20);
+const SOUND_PATHS = {
+  clueFound: "assets/audio/clue_twang.wav",
+  levelComplete: "assets/audio/level_complete_chime.wav",
+  timeUp: "assets/audio/time_up_buzzer.wav"
+};
 const STORAGE_KEY = "TIKUS_HIDDEN_EVIDENCE_EDITOR_DRAFT_V1";
 const ZONE_TYPES = ["floor", "table", "counter", "chair", "sofa", "wall"];
 
@@ -54,6 +59,11 @@ canvas.height = BASE_HEIGHT;
 const editorData = {
   settings: deepClone(GAME_DATA.settings),
   levels: deepClone(GAME_DATA.levels)
+};
+
+const audioState = {
+  sounds: {},
+  unlocked: false
 };
 
 const gameState = {
@@ -83,6 +93,7 @@ const gameState = {
 window.addEventListener("load", initGame);
 
 function initGame() {
+  loadGameAudio();
   bindEvents();
   updateMobileLayout();
   loadAllImages();
@@ -101,6 +112,9 @@ function bindEvents() {
   if (downloadLevelButton) downloadLevelButton.addEventListener("click", () => downloadTextFile(`${getCurrentLevel().id}_level_export.js`, buildCurrentLevelExport()));
   if (closeExportButton) closeExportButton.addEventListener("click", closeExportPanel);
   if (rotateScreenButton) rotateScreenButton.addEventListener("click", handleRotateScreenButton);
+
+  window.addEventListener("pointerdown", unlockGameAudio, { once: true });
+  window.addEventListener("keydown", unlockGameAudio, { once: true });
 
   window.addEventListener("keydown", handleKeyDown);
   window.addEventListener("resize", updateMobileLayout);
@@ -240,6 +254,63 @@ function getCurrentLevel() {
 
 function deepClone(value) {
   return JSON.parse(JSON.stringify(value));
+}
+
+
+function loadGameAudio() {
+  Object.entries(SOUND_PATHS).forEach(([name, path]) => {
+    const audio = new Audio(path);
+    audio.preload = "auto";
+    audio.volume = 0.85;
+    audioState.sounds[name] = audio;
+  });
+}
+
+function unlockGameAudio() {
+  if (audioState.unlocked) return;
+  audioState.unlocked = true;
+
+  Object.values(audioState.sounds).forEach((audio) => {
+    const originalVolume = audio.volume;
+    audio.volume = 0;
+
+    const playAttempt = audio.play();
+    if (playAttempt && typeof playAttempt.then === "function") {
+      playAttempt
+        .then(() => {
+          audio.pause();
+          audio.currentTime = 0;
+          audio.volume = originalVolume;
+        })
+        .catch(() => {
+          audio.volume = originalVolume;
+        });
+    } else {
+      audio.pause();
+      audio.currentTime = 0;
+      audio.volume = originalVolume;
+    }
+  });
+}
+
+function playGameSound(soundName) {
+  const audio = audioState.sounds[soundName];
+  if (!audio) return;
+
+  try {
+    const sound = audio.cloneNode(true);
+    sound.volume = audio.volume;
+    sound.currentTime = 0;
+
+    const playAttempt = sound.play();
+    if (playAttempt && typeof playAttempt.catch === "function") {
+      playAttempt.catch((error) => {
+        console.warn(`Sound could not play: ${soundName}`, error);
+      });
+    }
+  } catch (error) {
+    console.warn(`Sound could not play: ${soundName}`, error);
+  }
 }
 
 function loadAllImages() {
@@ -503,10 +574,13 @@ function clamp(value, min, max) {
 function collectClue(runtimeClue) {
   gameState.foundClues.add(runtimeClue.id);
   gameState.score += 100;
+  playGameSound("clueFound");
+
   if (isLevelComplete()) {
     gameState.mode = "level_complete";
     stopLevelTimer();
     showLevelCompleteOverlay();
+    window.setTimeout(() => playGameSound("levelComplete"), 120);
   }
 }
 
@@ -573,6 +647,7 @@ function updateTimerUI() {
 function handleTimeUp() {
   stopLevelTimer();
   gameState.timerRemaining = 0;
+  playGameSound("timeUp");
   gameState.mode = "time_up";
   updateTimerUI();
   showTimeUpOverlay();
@@ -986,6 +1061,7 @@ function updateMobileLayout() {
 }
 
 async function handleRotateScreenButton() {
+  unlockGameAudio();
   try {
     const target = canvasFrame || appShell || document.documentElement;
 

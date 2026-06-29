@@ -66,3 +66,19 @@ timerDurationSeconds: 20
 ```
 
 The timer pauses while Editor Mode or the export panel is open.
+
+
+## Audio cues
+
+This build includes local WAV audio files in `assets/audio/`:
+
+- `clue_twang.wav` plays when a clue is found.
+- `level_complete_chime.wav` plays when a level is completed successfully.
+- `time_up_buzzer.wav` plays when the timer reaches zero before all clues are found.
+
+Browsers require a user interaction before playing audio, so the game unlocks sound on the first click, tap, key press, or fullscreen/rotate button tap.
+
+
+## UI update
+
+The clue footer now sits directly beneath the 16:9 game level instead of overlaying the canvas. This keeps the room/map fully visible while preserving the horizontal clue list on desktop and mobile.

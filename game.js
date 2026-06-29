@@ -18,6 +18,7 @@ const ctx = canvas.getContext("2d");
 const clueListElement = document.getElementById("clueList");
 const scoreValueElement = document.getElementById("scoreValue");
 const wrongClickValueElement = document.getElementById("wrongClickValue");
+const timerValueElement = document.getElementById("timerValue");
 const levelNameElement = document.getElementById("levelName");
 
 const loadingOverlay = document.getElementById("loadingOverlay");
@@ -35,9 +36,15 @@ const downloadDataButton = document.getElementById("downloadDataButton");
 const downloadLevelButton = document.getElementById("downloadLevelButton");
 const closeExportButton = document.getElementById("closeExportButton");
 
+const appShell = document.getElementById("appShell");
+const canvasFrame = document.getElementById("canvasFrame");
+const mobileOrientationOverlay = document.getElementById("mobileOrientationOverlay");
+const rotateScreenButton = document.getElementById("rotateScreenButton");
+
 const BASE_WIDTH = GAME_DATA.settings.baseWidth;
 const BASE_HEIGHT = GAME_DATA.settings.baseHeight;
 const CLUE_SCALE = GAME_DATA.settings.clueScale || 1;
+const TIMER_DURATION_SECONDS = Number(GAME_DATA.settings.timerDurationSeconds || 20);
 const STORAGE_KEY = "TIKUS_HIDDEN_EVIDENCE_EDITOR_DRAFT_V1";
 const ZONE_TYPES = ["floor", "table", "counter", "chair", "sofa", "wall"];
 
@@ -57,6 +64,9 @@ const gameState = {
   runtimeClues: [],
   score: 0,
   wrongClicks: 0,
+  timerRemaining: TIMER_DURATION_SECONDS,
+  timerIntervalId: null,
+  timerLastTick: 0,
   debugHitboxes: false,
   debugZones: false,
 
@@ -74,6 +84,7 @@ window.addEventListener("load", initGame);
 
 function initGame() {
   bindEvents();
+  updateMobileLayout();
   loadAllImages();
 }
 
@@ -89,8 +100,12 @@ function bindEvents() {
   if (downloadDataButton) downloadDataButton.addEventListener("click", () => downloadTextFile("data.js", buildFullDataJsExport()));
   if (downloadLevelButton) downloadLevelButton.addEventListener("click", () => downloadTextFile(`${getCurrentLevel().id}_level_export.js`, buildCurrentLevelExport()));
   if (closeExportButton) closeExportButton.addEventListener("click", closeExportPanel);
+  if (rotateScreenButton) rotateScreenButton.addEventListener("click", handleRotateScreenButton);
 
   window.addEventListener("keydown", handleKeyDown);
+  window.addEventListener("resize", updateMobileLayout);
+  window.addEventListener("orientationchange", () => setTimeout(updateMobileLayout, 150));
+  document.addEventListener("fullscreenchange", updateMobileLayout);
 
   document.querySelectorAll("[data-editor-action]").forEach((button) => {
     button.addEventListener("click", () => handleEditorButtonAction(button.dataset.editorAction));
@@ -269,6 +284,7 @@ function startLevel(levelIndex) {
   gameState.foundClues = new Set();
   gameState.score = 0;
   gameState.wrongClicks = 0;
+  resetLevelTimer();
   gameState.selectedClueId = null;
   gameState.selectedZoneId = null;
   gameState.isDragging = false;
@@ -278,6 +294,7 @@ function startLevel(levelIndex) {
   hideLevelCompleteOverlay();
   updateUI();
   updateEditorOverlay();
+  startLevelTimer();
   render();
 }
 
@@ -364,6 +381,7 @@ function goToNextLevel() {
   const nextIndex = gameState.currentLevelIndex + 1;
   if (nextIndex >= editorData.levels.length) {
     gameState.mode = "game_complete";
+    stopLevelTimer();
     showGameCompleteOverlay();
     render();
     return;
@@ -487,6 +505,7 @@ function collectClue(runtimeClue) {
   gameState.score += 100;
   if (isLevelComplete()) {
     gameState.mode = "level_complete";
+    stopLevelTimer();
     showLevelCompleteOverlay();
   }
 }
@@ -494,6 +513,70 @@ function collectClue(runtimeClue) {
 function handleWrongClick() {
   gameState.wrongClicks += 1;
   if (gameState.score > 0) gameState.score = Math.max(0, gameState.score - 10);
+}
+
+function resetLevelTimer() {
+  stopLevelTimer();
+  gameState.timerRemaining = TIMER_DURATION_SECONDS;
+  gameState.timerLastTick = 0;
+  updateTimerUI();
+}
+
+function startLevelTimer() {
+  if (gameState.mode !== "playing" || gameState.editorMode) return;
+  if (exportModal && !exportModal.classList.contains("hidden")) return;
+  if (gameState.timerRemaining <= 0) return;
+  if (gameState.timerIntervalId) return;
+
+  gameState.timerLastTick = Date.now();
+  gameState.timerIntervalId = window.setInterval(tickLevelTimer, 100);
+}
+
+function stopLevelTimer() {
+  if (gameState.timerIntervalId) {
+    window.clearInterval(gameState.timerIntervalId);
+    gameState.timerIntervalId = null;
+  }
+  gameState.timerLastTick = 0;
+}
+
+function tickLevelTimer() {
+  if (gameState.mode !== "playing" || gameState.editorMode) {
+    stopLevelTimer();
+    return;
+  }
+
+  if (exportModal && !exportModal.classList.contains("hidden")) {
+    stopLevelTimer();
+    return;
+  }
+
+  const now = Date.now();
+  const elapsedSeconds = (now - gameState.timerLastTick) / 1000;
+  gameState.timerLastTick = now;
+
+  gameState.timerRemaining = Math.max(0, gameState.timerRemaining - elapsedSeconds);
+  updateTimerUI();
+
+  if (gameState.timerRemaining <= 0) {
+    handleTimeUp();
+  }
+}
+
+function updateTimerUI() {
+  if (!timerValueElement) return;
+  const seconds = Math.ceil(gameState.timerRemaining);
+  timerValueElement.textContent = String(seconds);
+  timerValueElement.closest(".stat-pill")?.classList.toggle("is-danger", seconds <= 5);
+}
+
+function handleTimeUp() {
+  stopLevelTimer();
+  gameState.timerRemaining = 0;
+  gameState.mode = "time_up";
+  updateTimerUI();
+  showTimeUpOverlay();
+  render();
 }
 
 function isLevelComplete() {
@@ -505,6 +588,7 @@ function updateUI() {
   if (levelNameElement) levelNameElement.textContent = level.name;
   if (scoreValueElement) scoreValueElement.textContent = String(gameState.score);
   if (wrongClickValueElement) wrongClickValueElement.textContent = String(gameState.wrongClicks);
+  updateTimerUI();
   updateClueList();
 }
 
@@ -513,6 +597,7 @@ function updateClueList() {
   clueListElement.innerHTML = "";
   getCurrentLevel().clues.forEach((clue) => {
     const li = document.createElement("li");
+    li.title = clue.name;
     li.textContent = clue.name;
     if (gameState.foundClues.has(clue.id)) {
       li.classList.add("found");
@@ -525,7 +610,8 @@ function updateClueList() {
 function toggleEditorMode() {
   gameState.editorMode = !gameState.editorMode;
   if (gameState.editorMode) {
-    gameState.debugZones = true;
+    stopLevelTimer();
+    gameState.debugZones = false;
     hideLevelCompleteOverlay();
     gameState.mode = "playing";
   } else {
@@ -540,7 +626,8 @@ function toggleEditorMode() {
 function setEditorTool(tool) {
   gameState.editorTool = tool;
   deselectAll();
-  if (tool === "zone") gameState.debugZones = true;
+  // Zones are visible only in zone mode, or when manually toggled with Z.
+  if (tool === "clue") gameState.debugZones = false;
   updateEditorOverlay();
   render();
 }
@@ -867,6 +954,7 @@ function drawStatusText() {
 }
 
 function updateEditorOverlay() {
+  document.body.classList.toggle("editor-active", gameState.editorMode);
   if (!editorHelpOverlay) return;
   editorHelpOverlay.classList.toggle("hidden", !gameState.editorMode);
   if (!editorModeLabel) return;
@@ -874,8 +962,59 @@ function updateEditorOverlay() {
   editorModeLabel.textContent = `EDITOR: ${gameState.editorTool.toUpperCase()}${selected ? ` · ${selected}` : ""}`;
 }
 
+
+function isMobileDevice() {
+  return window.matchMedia("(pointer: coarse)").matches || /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent);
+}
+
+function updateMobileLayout() {
+  const mobile = isMobileDevice();
+  const portrait = window.innerHeight > window.innerWidth;
+  const landscape = window.innerWidth >= window.innerHeight;
+
+  document.body.classList.toggle("is-mobile", mobile);
+  document.body.classList.toggle("is-portrait", mobile && portrait);
+  document.body.classList.toggle("is-landscape", mobile && landscape);
+
+  if (!mobileOrientationOverlay) return;
+
+  if (mobile && portrait) {
+    mobileOrientationOverlay.classList.remove("hidden");
+  } else {
+    mobileOrientationOverlay.classList.add("hidden");
+  }
+}
+
+async function handleRotateScreenButton() {
+  try {
+    const target = canvasFrame || appShell || document.documentElement;
+
+    if (!document.fullscreenElement && target && target.requestFullscreen) {
+      await target.requestFullscreen({ navigationUI: "hide" });
+    }
+
+    if (screen.orientation && screen.orientation.lock) {
+      await screen.orientation.lock("landscape");
+    }
+  } catch (error) {
+    console.warn("Could not force landscape orientation. Please rotate the device manually.", error);
+  }
+
+  setTimeout(updateMobileLayout, 150);
+}
+
 function hideLoadingOverlay() {
   if (loadingOverlay) loadingOverlay.classList.add("hidden");
+}
+
+function showTimeUpOverlay() {
+  if (!levelCompleteOverlay) return;
+  levelCompleteOverlay.classList.remove("hidden");
+  const heading = levelCompleteOverlay.querySelector("h2");
+  const message = levelCompleteOverlay.querySelector("p");
+  if (heading) heading.textContent = "Time's Up";
+  if (message) message.textContent = "The evidence went cold. Restart the room and try again.";
+  if (nextLevelButton) nextLevelButton.textContent = "Next Room";
 }
 
 function showLevelCompleteOverlay() {
@@ -884,7 +1023,9 @@ function showLevelCompleteOverlay() {
   const finalLevel = gameState.currentLevelIndex >= editorData.levels.length - 1;
   levelCompleteOverlay.classList.remove("hidden");
   const heading = levelCompleteOverlay.querySelector("h2");
+  const message = levelCompleteOverlay.querySelector("p");
   if (heading) heading.textContent = `${level.name} Complete`;
+  if (message) message.textContent = "The evidence in this room has been collected.";
   if (nextLevelButton) nextLevelButton.textContent = finalLevel ? "Finish Game" : "Next Room";
 }
 
@@ -892,7 +1033,9 @@ function showGameCompleteOverlay() {
   if (!levelCompleteOverlay) return;
   levelCompleteOverlay.classList.remove("hidden");
   const heading = levelCompleteOverlay.querySelector("h2");
+  const message = levelCompleteOverlay.querySelector("p");
   if (heading) heading.textContent = "Investigation Complete";
+  if (message) message.textContent = "All available rooms have been investigated.";
   if (nextLevelButton) nextLevelButton.style.display = "none";
 }
 
@@ -985,6 +1128,7 @@ function stringifyForDataJs(value) {
 }
 
 function openExportPanel(mode = "full", message = "") {
+  stopLevelTimer();
   if (!exportModal || !exportText) return;
   let text = "";
   if (mode === "selected") text = buildSelectedItemExport();
@@ -999,6 +1143,7 @@ function openExportPanel(mode = "full", message = "") {
 
 function closeExportPanel() {
   if (exportModal) exportModal.classList.add("hidden");
+  startLevelTimer();
 }
 
 async function copyExportToClipboard() {

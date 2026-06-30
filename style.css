@@ -886,3 +886,123 @@ body.is-mobile .level-report li {
   display: grid !important;
   z-index: 1000;
 }
+
+
+/* Main menu */
+.main-menu-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 16;
+  display: grid;
+  place-items: center;
+  padding: 1rem;
+  background:
+    radial-gradient(circle at top, rgba(65, 42, 24, .88), rgba(0, 0, 0, .78)),
+    rgba(0, 0, 0, .72);
+}
+
+.main-menu-card {
+  width: min(720px, 92%);
+  max-height: calc(100dvh - 2rem);
+  overflow-y: auto;
+  padding: 1.35rem;
+  border: 1px solid rgba(216,182,106,.62);
+  border-radius: 1rem;
+  background: linear-gradient(180deg, rgba(35,25,18,.97), rgba(14,10,8,.98));
+  color: var(--cream);
+  text-align: center;
+  box-shadow: 0 18px 52px rgba(0,0,0,.65);
+  -webkit-overflow-scrolling: touch;
+}
+
+.main-menu-card h1 {
+  margin: .25rem 0 .65rem;
+  color: var(--cream);
+  font-size: clamp(1.65rem, 4vw, 3rem);
+}
+
+.main-menu-card p {
+  color: var(--muted);
+  line-height: 1.45;
+}
+
+.menu-buttons {
+  margin-top: 1rem;
+}
+
+.menu-high-score {
+  width: min(320px, 100%);
+  margin: 1rem auto .5rem;
+  padding: .75rem .9rem;
+  border: 1px solid rgba(216,182,106,.38);
+  border-radius: .85rem;
+  background: rgba(0,0,0,.24);
+}
+
+.menu-high-score span {
+  display: block;
+  color: var(--muted);
+  font: 800 .72rem/1 Arial, sans-serif;
+  text-transform: uppercase;
+  letter-spacing: .1em;
+}
+
+.menu-high-score strong {
+  display: block;
+  margin-top: .25rem;
+  color: var(--gold);
+  font: 900 1.45rem/1 Arial, sans-serif;
+}
+
+.level-select-lock {
+  min-height: 1.2em;
+  font: 700 .8rem/1.35 Arial, sans-serif;
+}
+
+.level-select-panel {
+  margin-top: 1rem;
+  padding-top: .9rem;
+  border-top: 1px solid rgba(216,182,106,.22);
+}
+
+.level-select-panel h2 {
+  margin: 0 0 .7rem;
+  color: var(--gold);
+  font-size: 1.1rem;
+}
+
+.level-select-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(155px, 1fr));
+  gap: .55rem;
+}
+
+.level-select-grid button {
+  min-height: 48px;
+  padding: .55rem .65rem;
+  font-size: .82rem;
+}
+
+body.is-mobile .main-menu-card {
+  width: min(680px, calc(100vw - 1rem));
+  padding: .95rem;
+}
+
+body.is-mobile .level-select-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+body.is-mobile .level-select-grid button {
+  font-size: .7rem;
+  padding: .45rem .5rem;
+}
+
+
+/* End menu level select */
+#endLevelSelectPanel {
+  margin-bottom: 1rem;
+}
+
+#endChooseLevelButton.hidden {
+  display: none !important;
+}

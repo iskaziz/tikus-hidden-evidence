@@ -51,6 +51,14 @@ const canvasFrame = document.getElementById("canvasFrame");
 const mobileOrientationOverlay = document.getElementById("mobileOrientationOverlay");
 const rotateScreenButton = document.getElementById("rotateScreenButton");
 
+const mainMenuOverlay = document.getElementById("mainMenuOverlay");
+const startGameButton = document.getElementById("startGameButton");
+const menuHighScore = document.getElementById("menuHighScore");
+const highScoreValue = document.getElementById("highScoreValue");
+const endChooseLevelButton = document.getElementById("endChooseLevelButton");
+const endLevelSelectPanel = document.getElementById("endLevelSelectPanel");
+const endLevelSelectGrid = document.getElementById("endLevelSelectGrid");
+
 const feiskLogoButton = document.getElementById("feiskLogoButton");
 const editorKeypadModal = document.getElementById("editorKeypadModal");
 const editorCodeDisplay = document.getElementById("editorCodeDisplay");
@@ -75,6 +83,7 @@ const SOUND_PATHS = {
   timeUp: "assets/audio/time_up_buzzer.wav"
 };
 const STORAGE_KEY = "TIKUS_HIDDEN_EVIDENCE_EDITOR_DRAFT_V1";
+const PROGRESS_KEY = "TIKUS_HIDDEN_EVIDENCE_PROGRESS_V1";
 const ZONE_TYPES = ["floor", "table", "counter", "chair", "sofa", "wall"];
 const EDITOR_ACCESS_CODE = "0707";
 const LOGO_TAP_WINDOW_MS = 1400;
@@ -95,6 +104,9 @@ const audioState = {
 const gameState = {
   currentLevelIndex: 0,
   mode: "loading",
+  totalRunScore: 0,
+  currentLevelScoreBanked: false,
+  progress: loadPlayerProgress(),
   images: {},
   foundClues: new Set(),
   runtimeClues: [],
@@ -160,6 +172,8 @@ function bindEvents() {
 
   if (restartButton) restartButton.addEventListener("click", restartLevel);
   if (nextLevelButton) nextLevelButton.addEventListener("click", goToNextLevel);
+  if (endChooseLevelButton) endChooseLevelButton.addEventListener("click", toggleEndLevelSelectPanel);
+  if (startGameButton) startGameButton.addEventListener("click", startNewGameFromMenu);
   if (copyExportButton) copyExportButton.addEventListener("click", copyExportToClipboard);
   if (downloadDataButton) downloadDataButton.addEventListener("click", () => downloadTextFile("data.js", buildFullDataJsExport()));
   if (downloadLevelButton) downloadLevelButton.addEventListener("click", () => downloadTextFile(`${getCurrentLevel().id}_level_export.js`, buildCurrentLevelExport()));
@@ -403,7 +417,7 @@ function loadAllImages() {
   const totalImages = imagePaths.length;
 
   if (totalImages === 0) {
-    startLevel(0);
+    showMainMenu();
     return;
   }
 
@@ -411,12 +425,12 @@ function loadAllImages() {
     const image = new Image();
     image.onload = () => {
       loadedCount += 1;
-      if (loadedCount === totalImages) startLevel(0);
+      if (loadedCount === totalImages) showMainMenu();
     };
     image.onerror = () => {
       console.error("Failed to load image:", path);
       loadedCount += 1;
-      if (loadedCount === totalImages) startLevel(0);
+      if (loadedCount === totalImages) showMainMenu();
     };
     image.src = path;
     gameState.images[path] = image;
@@ -432,8 +446,88 @@ function collectImagePaths() {
   return Array.from(paths);
 }
 
+
+function loadPlayerProgress() {
+  try {
+    const saved = JSON.parse(localStorage.getItem(PROGRESS_KEY) || "{}");
+    return {
+      allLevelsCompleted: saved.allLevelsCompleted === true,
+      highScore: Number(saved.highScore || 0)
+    };
+  } catch (error) {
+    return { allLevelsCompleted: false, highScore: 0 };
+  }
+}
+
+function savePlayerProgress() {
+  localStorage.setItem(PROGRESS_KEY, JSON.stringify(gameState.progress));
+}
+
+function showMainMenu() {
+  stopLevelTimer();
+  gameState.mode = "menu";
+  hideLoadingOverlay();
+  hideLevelCompleteOverlay();
+  if (roomIntroOverlay) roomIntroOverlay.classList.add("hidden");
+  if (mainMenuOverlay) mainMenuOverlay.classList.remove("hidden");
+  updateMainMenuUI();
+  render();
+}
+
+function hideMainMenu() {
+  if (mainMenuOverlay) mainMenuOverlay.classList.add("hidden");
+}
+
+function updateMainMenuUI() {
+  const unlocked = gameState.progress.allLevelsCompleted === true;
+  if (menuHighScore) menuHighScore.classList.toggle("hidden", !unlocked);
+  if (highScoreValue) highScoreValue.textContent = String(gameState.progress.highScore || 0);
+}
+
+function buildLevelSelectGrid() {
+  if (!endLevelSelectGrid) return;
+  endLevelSelectGrid.innerHTML = "";
+  editorData.levels.forEach((level, index) => {
+    const button = document.createElement("button");
+    button.type = "button";
+    button.textContent = level.name;
+    button.addEventListener("click", () => startSelectedLevel(index));
+    endLevelSelectGrid.appendChild(button);
+  });
+}
+
+function toggleEndLevelSelectPanel() {
+  if (!gameState.progress.allLevelsCompleted || !endLevelSelectPanel) return;
+  buildLevelSelectGrid();
+  endLevelSelectPanel.classList.toggle("hidden");
+}
+
+function startNewGameFromMenu() {
+  gameState.totalRunScore = 0;
+  gameState.foundLevelIds = new Set();
+  hideMainMenu();
+  startLevel(0);
+}
+
+function startSelectedLevel(levelIndex) {
+  if (!gameState.progress.allLevelsCompleted) return;
+  gameState.totalRunScore = 0;
+  gameState.foundLevelIds = new Set();
+  hideMainMenu();
+  hideLevelCompleteOverlay();
+  if (endLevelSelectPanel) endLevelSelectPanel.classList.add("hidden");
+  startLevel(levelIndex);
+}
+
+function updateHighScoreAfterGameComplete() {
+  gameState.progress.allLevelsCompleted = true;
+  gameState.progress.highScore = Math.max(Number(gameState.progress.highScore || 0), Number(gameState.totalRunScore || 0));
+  savePlayerProgress();
+}
+
 function startLevel(levelIndex) {
   syncRuntimeCluesIntoEditorLevel();
+  hideMainMenu();
   gameState.currentLevelIndex = levelIndex;
   gameState.mode = "intro";
   gameState.foundClues = new Set();
@@ -443,6 +537,7 @@ function startLevel(levelIndex) {
   gameState.lastFoundAt = 0;
   gameState.currentLevelTimeBonus = 0;
   gameState.currentLevelStars = 0;
+  gameState.currentLevelScoreBanked = false;
   gameState.currentLevelCompletedClues = [];
   gameState.wrongFlashUntil = 0;
   gameState.toastUntil = 0;
@@ -558,6 +653,7 @@ function restartGameFromBeginning() {
   if (roomIntroOverlay) roomIntroOverlay.classList.add("hidden");
   if (exportModal) exportModal.classList.add("hidden");
   gameState.foundLevelIds = new Set();
+  gameState.totalRunScore = 0;
   gameState.score = 0;
   gameState.wrongClicks = 0;
   gameState.comboStreak = 0;
@@ -577,6 +673,7 @@ function goToNextLevel() {
   if (nextIndex >= editorData.levels.length) {
     gameState.mode = "game_complete";
     stopLevelTimer();
+    updateHighScoreAfterGameComplete();
     showGameCompleteOverlay();
     render();
     return;
@@ -752,6 +849,10 @@ function completeCurrentLevelSuccessfully() {
   gameState.currentLevelTimeBonus = Math.max(0, remainingSeconds * TIME_BONUS_PER_SECOND);
   gameState.score += gameState.currentLevelTimeBonus;
   gameState.currentLevelStars = calculateStars();
+  if (!gameState.currentLevelScoreBanked) {
+    gameState.totalRunScore += gameState.score;
+    gameState.currentLevelScoreBanked = true;
+  }
   gameState.foundLevelIds.add(getCurrentLevel().id);
   showLevelCompleteOverlay();
   updateUI();
@@ -1601,6 +1702,8 @@ function showTimeUpOverlay() {
       <ul>${missing || "<li>None</li>"}</ul>
     `;
   }
+  if (endChooseLevelButton) endChooseLevelButton.classList.add("hidden");
+  if (endLevelSelectPanel) endLevelSelectPanel.classList.add("hidden");
   if (nextLevelButton) nextLevelButton.textContent = "Next Room";
 }
 
@@ -1615,6 +1718,8 @@ function showLevelCompleteOverlay() {
   if (heading) heading.textContent = `${level.name} Complete`;
   if (message) message.textContent = buildLevelAssessmentText(level);
   if (levelReport) levelReport.innerHTML = buildLevelReportHtml(level);
+  if (endChooseLevelButton) endChooseLevelButton.classList.add("hidden");
+  if (endLevelSelectPanel) endLevelSelectPanel.classList.add("hidden");
   if (nextLevelButton) nextLevelButton.textContent = finalLevel ? "Finish Game" : "Next Room";
 }
 
@@ -1625,8 +1730,14 @@ function showGameCompleteOverlay() {
   const heading = levelCompleteOverlay.querySelector("h2");
   const message = levelCompleteOverlay.querySelector("p");
   if (heading) heading.textContent = "Investigation Complete";
-  if (message) message.textContent = "The final evidence board is ready. Review the rooms and decide who had motive, access, and opportunity.";
+  if (message) message.textContent = `The final evidence board is ready. Run score: ${gameState.totalRunScore}. High score: ${gameState.progress.highScore}.`;
   if (levelReport) levelReport.innerHTML = buildFinalEvidenceBoardHtml();
+  if (endChooseLevelButton) {
+    endChooseLevelButton.classList.remove("hidden");
+    endChooseLevelButton.style.display = "";
+  }
+  if (endLevelSelectPanel) endLevelSelectPanel.classList.add("hidden");
+  buildLevelSelectGrid();
   if (nextLevelButton) {
     nextLevelButton.style.display = "";
     nextLevelButton.textContent = "Start From Beginning";
@@ -1637,6 +1748,8 @@ function hideLevelCompleteOverlay() {
   if (!levelCompleteOverlay) return;
   levelCompleteOverlay.classList.add("hidden");
   if (levelReport) levelReport.innerHTML = "";
+  if (endLevelSelectPanel) endLevelSelectPanel.classList.add("hidden");
+  if (endChooseLevelButton) endChooseLevelButton.classList.add("hidden");
   if (nextLevelButton) nextLevelButton.style.display = "";
 }
 

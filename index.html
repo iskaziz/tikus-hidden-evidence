@@ -43,6 +43,24 @@
             </div>
           </div>
 
+          <div id="mainMenuOverlay" class="main-menu-overlay hidden">
+            <div class="main-menu-card">
+              <span class="intro-kicker">Samasihat Wellness Retreat</span>
+              <h1>TIKUS: Hidden Evidence</h1>
+              <p>Search the mansion, collect the evidence, and complete the case file before time runs out.</p>
+
+              <div id="menuHighScore" class="menu-high-score hidden">
+                <span>Current High Score</span>
+                <strong id="highScoreValue">0</strong>
+              </div>
+
+              <div class="button-row menu-buttons">
+                <button id="startGameButton" type="button">Start Game</button>
+              </div>
+              </div>
+            </div>
+          </div>
+
           <div id="roomIntroOverlay" class="room-intro-overlay hidden">
             <div class="intro-card">
               <span class="intro-kicker">New Room</span>
@@ -64,8 +82,13 @@
               <h2>Level Complete</h2>
               <p>The evidence in this room has been collected.</p>
               <div id="levelReport" class="level-report"></div>
+              <div id="endLevelSelectPanel" class="level-select-panel hidden" aria-label="Choose completed level">
+                <h2>Choose Level</h2>
+                <div id="endLevelSelectGrid" class="level-select-grid"></div>
+              </div>
               <div class="button-row">
                 <button id="restartButton" type="button">Restart Level</button>
+                <button id="endChooseLevelButton" type="button" class="hidden">Choose Levels</button>
                 <button id="nextLevelButton" type="button">Next Room</button>
               </div>
             </div>

@@ -208,3 +208,29 @@ Changes:
 - Kept the 25-second timer and +3 seconds per clue found.
 - Kept hidden editor access through triple-clicking the Feisk logo and entering `0707`.
 - Tidied the mobile/fullscreen logic by removing unused portrait-pan code paths.
+
+
+## Main menu update
+
+This build adds a starting menu before gameplay begins.
+
+Menu options:
+- **Start Game** begins from the first room.
+- **Choose Levels** is locked until the player completes all levels.
+- After all levels are completed, the menu shows the player's current high score.
+- Level-select unlock and high score are saved in `localStorage`.
+
+Scoring:
+- A run score is accumulated as each completed room score is banked.
+- At the end of all rooms, the run score is compared against the saved high score.
+
+
+## End menu level select update
+
+The main menu now only starts the game. Level selection has been moved to the Investigation Complete end menu.
+
+After all levels are completed:
+- **Choose Levels** appears on the end menu.
+- Pressing it opens the completed level list.
+- The player can replay any room from there.
+- The main menu still shows the high score after completion.

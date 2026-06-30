@@ -234,3 +234,28 @@ After all levels are completed:
 - Pressing it opens the completed level list.
 - The player can replay any room from there.
 - The main menu still shows the high score after completion.
+
+
+## Editor visual controls update
+
+Editor Mode now supports per-clue visual tuning:
+
+- **O / P**: decrease / increase opacity
+- **K / L**: decrease / increase saturation
+- **B / V**: decrease / increase brightness
+
+These values are rendered live on Canvas and exported into `data.js` for each clue:
+
+```js
+opacity: 0.85,
+saturation: 0.9,
+brightness: 0.95
+```
+
+Zone resizing has also been expanded:
+
+- Existing **- / =** still scales the selected item.
+- In Zone Mode, **Alt/Option + Arrow Keys** resize the selected zone width/height.
+- Mobile/editor buttons now include Zone W-/W+/H-/H+ controls.
+
+This helps clues blend better with room lighting without editing the PNG files.

@@ -98,8 +98,9 @@
             <strong id="editorModeLabel">EDITOR: CLUES</strong>
             <span><b>E</b> exit/open export · <b>1</b> clue mode · <b>2</b> zone mode</span>
             <span><b>Click/drag</b> select & move · <b>Arrows</b> nudge · <b>Shift</b> x10</span>
-            <span><b>- / =</b> resize · <b>[ / ]</b> rotate clue · <b>N</b> new zone</span>
-            <span><b>T</b> cycle zone type · <b>Del</b> delete zone · <b>R</b> randomize clue</span>
+            <span><b>- / =</b> resize selected · <b>[ / ]</b> rotate clue · <b>N</b> new zone</span>
+            <span><b>O/P</b> opacity · <b>K/L</b> saturation · <b>B/V</b> brightness</span>
+            <span><b>Alt/Option + Arrows</b> resize zone width/height · <b>T</b> cycle zone type · <b>Del</b> delete zone · <b>R</b> randomize clue</span>
             <span><b>C</b> copy selected · <b>X</b> export level/data.js · <b>S/L</b> save/load draft</span>
             <span><b>H</b> hitboxes · <b>Z</b> zones · <b>Esc</b> deselect</span>
           </div>
@@ -119,6 +120,16 @@
           <button type="button" data-editor-action="larger">+</button>
           <button type="button" data-editor-action="rotateLeft">⟲</button>
           <button type="button" data-editor-action="rotateRight">⟳</button>
+          <button type="button" data-editor-action="opacityDown">Opacity -</button>
+          <button type="button" data-editor-action="opacityUp">Opacity +</button>
+          <button type="button" data-editor-action="saturationDown">Sat -</button>
+          <button type="button" data-editor-action="saturationUp">Sat +</button>
+          <button type="button" data-editor-action="brightnessDown">Bright -</button>
+          <button type="button" data-editor-action="brightnessUp">Bright +</button>
+          <button type="button" data-editor-action="zoneWidthDown">Zone W-</button>
+          <button type="button" data-editor-action="zoneWidthUp">Zone W+</button>
+          <button type="button" data-editor-action="zoneHeightDown">Zone H-</button>
+          <button type="button" data-editor-action="zoneHeightUp">Zone H+</button>
           <button type="button" data-editor-action="export">Export</button>
         </div>
       </div>

@@ -232,6 +232,16 @@ function handleEditorButtonAction(action) {
     case "larger": resizeSelectedItem(1.05); break;
     case "rotateLeft": rotateSelectedClue(-5); break;
     case "rotateRight": rotateSelectedClue(5); break;
+    case "opacityDown": adjustSelectedClueVisual("opacity", -0.05); break;
+    case "opacityUp": adjustSelectedClueVisual("opacity", 0.05); break;
+    case "saturationDown": adjustSelectedClueVisual("saturation", -0.1); break;
+    case "saturationUp": adjustSelectedClueVisual("saturation", 0.1); break;
+    case "brightnessDown": adjustSelectedClueVisual("brightness", -0.1); break;
+    case "brightnessUp": adjustSelectedClueVisual("brightness", 0.1); break;
+    case "zoneWidthDown": resizeSelectedZoneDimension(-10, 0); break;
+    case "zoneWidthUp": resizeSelectedZoneDimension(10, 0); break;
+    case "zoneHeightDown": resizeSelectedZoneDimension(0, -10); break;
+    case "zoneHeightUp": resizeSelectedZoneDimension(0, 10); break;
     case "export": openExportPanel("full"); break;
     default: break;
   }
@@ -270,7 +280,11 @@ function handleKeyDown(event) {
   if (["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight"].includes(key)) {
     event.preventDefault();
     const amount = event.shiftKey ? 10 : 1;
-    nudgeSelectedItem(key, amount);
+    if (event.altKey && gameState.editorTool === "zone") {
+      resizeSelectedZoneWithArrow(key, amount * 2);
+    } else {
+      nudgeSelectedItem(key, amount);
+    }
     return;
   }
 
@@ -332,6 +346,30 @@ function handleKeyDown(event) {
     case "r":
       event.preventDefault();
       toggleSelectedClueRandomize();
+      break;
+    case "o":
+      event.preventDefault();
+      adjustSelectedClueVisual("opacity", -0.05);
+      break;
+    case "p":
+      event.preventDefault();
+      adjustSelectedClueVisual("opacity", 0.05);
+      break;
+    case "k":
+      event.preventDefault();
+      adjustSelectedClueVisual("saturation", -0.1);
+      break;
+    case "l":
+      event.preventDefault();
+      adjustSelectedClueVisual("saturation", 0.1);
+      break;
+    case "b":
+      event.preventDefault();
+      adjustSelectedClueVisual("brightness", -0.1);
+      break;
+    case "v":
+      event.preventDefault();
+      adjustSelectedClueVisual("brightness", 0.1);
       break;
     case "delete":
     case "backspace":
@@ -587,6 +625,9 @@ function buildRuntimeCluesForCurrentLevel() {
       width: scaledWidth,
       height: scaledHeight,
       rotation: Number(clue.rotation || 0),
+      opacity: Number(clue.opacity ?? 1),
+      saturation: Number(clue.saturation ?? 1),
+      brightness: Number(clue.brightness ?? 1),
       randomize: clue.randomize === true,
       placementZoneId: position.zoneId || null,
       hitbox: { x: Math.round(position.x), y: Math.round(position.y), width: scaledWidth, height: scaledHeight }
@@ -607,6 +648,9 @@ function syncRuntimeCluesIntoEditorLevel() {
     clue.width = Math.max(1, Math.round(runtimeClue.width / CLUE_SCALE));
     clue.height = Math.max(1, Math.round(runtimeClue.height / CLUE_SCALE));
     clue.rotation = Math.round(runtimeClue.rotation || 0);
+    clue.opacity = roundToTwo(runtimeClue.opacity ?? 1);
+    clue.saturation = roundToTwo(runtimeClue.saturation ?? 1);
+    clue.brightness = roundToTwo(runtimeClue.brightness ?? 1);
     clue.randomize = runtimeClue.randomize === true;
   });
 }
@@ -806,6 +850,10 @@ function isPointInsideRect(x, y, rect) {
 
 function clamp(value, min, max) {
   return Math.max(min, Math.min(max, value));
+}
+
+function roundToTwo(value) {
+  return Math.round(Number(value) * 100) / 100;
 }
 
 function collectClue(runtimeClue) {
@@ -1276,6 +1324,44 @@ function nudgeSelectedItem(key, amount) {
   render();
 }
 
+
+function adjustSelectedClueVisual(property, delta) {
+  if (!gameState.editorMode || gameState.editorTool !== "clue") return;
+  const clue = getSelectedRuntimeClue();
+  if (!clue) return;
+
+  const limits = {
+    opacity: [0.15, 1],
+    saturation: [0, 2],
+    brightness: [0.3, 1.8]
+  };
+  if (!limits[property]) return;
+
+  const [min, max] = limits[property];
+  clue[property] = roundToTwo(clamp(Number(clue[property] ?? 1) + delta, min, max));
+  updateEditorOverlay();
+  render();
+}
+
+function resizeSelectedZoneWithArrow(key, amount) {
+  if (!gameState.editorMode || gameState.editorTool !== "zone") return;
+  if (key === "ArrowLeft") resizeSelectedZoneDimension(-amount, 0);
+  if (key === "ArrowRight") resizeSelectedZoneDimension(amount, 0);
+  if (key === "ArrowUp") resizeSelectedZoneDimension(0, -amount);
+  if (key === "ArrowDown") resizeSelectedZoneDimension(0, amount);
+}
+
+function resizeSelectedZoneDimension(deltaWidth, deltaHeight) {
+  if (!gameState.editorMode || gameState.editorTool !== "zone") return;
+  const zone = getSelectedZone();
+  if (!zone) return;
+
+  zone.width = clamp(Math.round(zone.width + deltaWidth), 20, BASE_WIDTH - zone.x);
+  zone.height = clamp(Math.round(zone.height + deltaHeight), 20, BASE_HEIGHT - zone.y);
+  updateEditorOverlay();
+  render();
+}
+
 function resizeSelectedItem(factor) {
   if (!gameState.editorMode) return;
 
@@ -1435,7 +1521,7 @@ function drawClues() {
     if (!gameState.editorMode && runtimeClue.id === gameState.hoveredClueId) {
       drawClueGlow(runtimeClue);
     }
-    drawRotatedImage(image, runtimeClue.x, runtimeClue.y, runtimeClue.width, runtimeClue.height, runtimeClue.rotation || 0);
+    drawClueImage(image, runtimeClue);
   });
 }
 
@@ -1451,6 +1537,18 @@ function drawClueGlow(runtimeClue) {
     runtimeClue.hitbox.width + 10,
     runtimeClue.hitbox.height + 10
   );
+  ctx.restore();
+}
+
+function drawClueImage(image, runtimeClue) {
+  const opacity = clamp(Number(runtimeClue.opacity ?? 1), 0.15, 1);
+  const saturation = clamp(Number(runtimeClue.saturation ?? 1), 0, 2);
+  const brightness = clamp(Number(runtimeClue.brightness ?? 1), 0.3, 1.8);
+
+  ctx.save();
+  ctx.globalAlpha = opacity;
+  ctx.filter = `saturate(${Math.round(saturation * 100)}%) brightness(${Math.round(brightness * 100)}%)`;
+  drawRotatedImage(image, runtimeClue.x, runtimeClue.y, runtimeClue.width, runtimeClue.height, runtimeClue.rotation || 0);
   ctx.restore();
 }
 
@@ -1578,7 +1676,17 @@ function updateEditorOverlay() {
   editorHelpOverlay.classList.toggle("hidden", !gameState.editorMode);
   if (!editorModeLabel) return;
   const selected = gameState.editorTool === "clue" ? gameState.selectedClueId : gameState.selectedZoneId;
-  editorModeLabel.textContent = `EDITOR: ${gameState.editorTool.toUpperCase()}${selected ? ` · ${selected}` : ""}`;
+  let detail = "";
+  if (gameState.editorTool === "clue") {
+    const clue = getSelectedRuntimeClue();
+    if (clue) {
+      detail = ` · opacity ${roundToTwo(clue.opacity ?? 1)} · sat ${roundToTwo(clue.saturation ?? 1)} · bright ${roundToTwo(clue.brightness ?? 1)}`;
+    }
+  } else {
+    const zone = getSelectedZone();
+    if (zone) detail = ` · ${zone.width}×${zone.height}`;
+  }
+  editorModeLabel.textContent = `EDITOR: ${gameState.editorTool.toUpperCase()}${selected ? ` · ${selected}` : ""}${detail}`;
 }
 
 
@@ -1826,6 +1934,9 @@ function runtimeClueToDataClue(runtimeClue) {
     width: Math.max(1, Math.round(runtimeClue.width / CLUE_SCALE)),
     height: Math.max(1, Math.round(runtimeClue.height / CLUE_SCALE)),
     rotation: Math.round(runtimeClue.rotation || 0),
+    opacity: roundToTwo(runtimeClue.opacity ?? 1),
+    saturation: roundToTwo(runtimeClue.saturation ?? 1),
+    brightness: roundToTwo(runtimeClue.brightness ?? 1),
     description: source.description || ""
   };
 }

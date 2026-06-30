@@ -2,11 +2,12 @@
   TIKUS: Hidden Evidence
   data.js
 
-  Six-room story pass:
+  Clean six-room build:
   - 6 rooms
   - 6 clues per room
   - 25 second timer
   - +3 seconds per clue found
+  - hint feature removed
 */
 
 const GAME_DATA = {
@@ -21,8 +22,6 @@ const GAME_DATA = {
     "comboBonusStep": 25,
     "timeBonusPerSecond": 10,
     "wrongClickPenalty": 10,
-    "hintPenalty": 50,
-    "hintsPerLevel": 3,
     "timerDurationSeconds": 25,
     "clueTimeBonusSeconds": 3
   },

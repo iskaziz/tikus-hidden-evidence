@@ -37,8 +37,6 @@ const foundEvidencePopup = document.getElementById("foundEvidencePopup");
 const foundEvidenceName = document.getElementById("foundEvidenceName");
 const foundEvidenceDetail = document.getElementById("foundEvidenceDetail");
 const levelReport = document.getElementById("levelReport");
-const hintButton = document.getElementById("hintButton");
-const hintCountElement = document.getElementById("hintCount");
 
 const exportModal = document.getElementById("exportModal");
 const exportText = document.getElementById("exportText");
@@ -52,7 +50,6 @@ const appShell = document.getElementById("appShell");
 const canvasFrame = document.getElementById("canvasFrame");
 const mobileOrientationOverlay = document.getElementById("mobileOrientationOverlay");
 const rotateScreenButton = document.getElementById("rotateScreenButton");
-const portraitPanButton = document.getElementById("portraitPanButton");
 
 const feiskLogoButton = document.getElementById("feiskLogoButton");
 const editorKeypadModal = document.getElementById("editorKeypadModal");
@@ -67,8 +64,6 @@ const BASE_HEIGHT = GAME_DATA.settings.baseHeight;
 const CLUE_SCALE = GAME_DATA.settings.clueScale || 1;
 const TIMER_DURATION_SECONDS = Number(GAME_DATA.settings.timerDurationSeconds || 20);
 const CLUE_TIME_BONUS_SECONDS = Number(GAME_DATA.settings.clueTimeBonusSeconds || 0);
-const HINTS_PER_LEVEL = Number(GAME_DATA.settings.hintsPerLevel || 3);
-const HINT_PENALTY = Number(GAME_DATA.settings.hintPenalty || 50);
 const WRONG_CLICK_PENALTY = Number(GAME_DATA.settings.wrongClickPenalty || 10);
 const TIME_BONUS_PER_SECOND = Number(GAME_DATA.settings.timeBonusPerSecond || 10);
 const COMBO_BONUS_STEP = Number(GAME_DATA.settings.comboBonusStep || 25);
@@ -105,21 +100,17 @@ const gameState = {
   runtimeClues: [],
   score: 0,
   wrongClicks: 0,
-  hintsRemaining: HINTS_PER_LEVEL,
   comboStreak: 0,
   lastFoundAt: 0,
   currentLevelTimeBonus: 0,
   currentLevelStars: 0,
   currentLevelCompletedClues: [],
   foundLevelIds: new Set(),
-  hintPulseUntil: 0,
-  hintedClueId: null,
   wrongFlashUntil: 0,
   toastUntil: 0,
   toastText: "",
   toastKind: "",
   foundEvidencePopupTimeout: null,
-  mobilePlayMode: localStorage.getItem("TIKUS_MOBILE_PLAY_MODE") || "",
   editorUnlocked: false,
   logoTapCount: 0,
   lastLogoTapAt: 0,
@@ -144,6 +135,7 @@ const gameState = {
   editorTool: "clue", // clue or zone
   selectedClueId: null,
   selectedZoneId: null,
+  hoveredClueId: null,
   isDragging: false,
   dragOffsetX: 0,
   dragOffsetY: 0,
@@ -164,6 +156,7 @@ function bindEvents() {
   canvas.addEventListener("pointermove", handleCanvasPointerMove);
   canvas.addEventListener("pointerup", handleCanvasPointerUp);
   canvas.addEventListener("pointercancel", handleCanvasPointerUp);
+  canvas.addEventListener("pointerleave", clearClueHover);
 
   if (restartButton) restartButton.addEventListener("click", restartLevel);
   if (nextLevelButton) nextLevelButton.addEventListener("click", goToNextLevel);
@@ -172,7 +165,6 @@ function bindEvents() {
   if (downloadLevelButton) downloadLevelButton.addEventListener("click", () => downloadTextFile(`${getCurrentLevel().id}_level_export.js`, buildCurrentLevelExport()));
   if (closeExportButton) closeExportButton.addEventListener("click", closeExportPanel);
   if (rotateScreenButton) rotateScreenButton.addEventListener("click", handleRotateScreenButton);
-  if (portraitPanButton) portraitPanButton.addEventListener("click", enablePortraitPanMode);
   if (feiskLogoButton) {
     feiskLogoButton.addEventListener("click", handleLogoSecretTap);
     feiskLogoButton.addEventListener("keydown", (event) => {
@@ -189,7 +181,6 @@ function bindEvents() {
     button.addEventListener("click", () => addEditorCodeDigit(button.dataset.keypadNumber));
   });
   if (startRoomButton) startRoomButton.addEventListener("click", beginCurrentRoomSearch);
-  if (hintButton) hintButton.addEventListener("click", useHint);
 
   window.addEventListener("pointerdown", unlockGameAudio, { once: true });
   window.addEventListener("keydown", unlockGameAudio, { once: true });
@@ -202,6 +193,14 @@ function bindEvents() {
   document.querySelectorAll("[data-editor-action]").forEach((button) => {
     button.addEventListener("click", () => handleEditorButtonAction(button.dataset.editorAction));
   });
+}
+
+function clearClueHover() {
+  if (gameState.hoveredClueId) {
+    gameState.hoveredClueId = null;
+    canvas.style.cursor = "default";
+    render();
+  }
 }
 
 function handleEditorButtonAction(action) {
@@ -440,14 +439,11 @@ function startLevel(levelIndex) {
   gameState.foundClues = new Set();
   gameState.score = 0;
   gameState.wrongClicks = 0;
-  gameState.hintsRemaining = HINTS_PER_LEVEL;
   gameState.comboStreak = 0;
   gameState.lastFoundAt = 0;
   gameState.currentLevelTimeBonus = 0;
   gameState.currentLevelStars = 0;
   gameState.currentLevelCompletedClues = [];
-  gameState.hintPulseUntil = 0;
-  gameState.hintedClueId = null;
   gameState.wrongFlashUntil = 0;
   gameState.toastUntil = 0;
   gameState.toastText = "";
@@ -457,6 +453,7 @@ function startLevel(levelIndex) {
   resetLevelTimer();
   gameState.selectedClueId = null;
   gameState.selectedZoneId = null;
+  gameState.hoveredClueId = null;
   gameState.isDragging = false;
 
   buildRuntimeCluesForCurrentLevel();
@@ -617,6 +614,16 @@ function handleCanvasPointerMove(event) {
   const point = getCanvasGameCoordinates(event);
   gameState.lastPointer = point;
 
+  if (!gameState.editorMode && gameState.mode === "playing") {
+    const hovered = findClickedRuntimeClue(point.x, point.y);
+    const nextHoverId = hovered ? hovered.id : null;
+    if (gameState.hoveredClueId !== nextHoverId) {
+      gameState.hoveredClueId = nextHoverId;
+      canvas.style.cursor = hovered ? "pointer" : "default";
+      render();
+    }
+  }
+
   if (!gameState.editorMode || !gameState.isDragging) return;
 
   if (gameState.editorTool === "clue") {
@@ -708,6 +715,7 @@ function collectClue(runtimeClue) {
   if (gameState.foundClues.has(runtimeClue.id)) return;
 
   gameState.foundClues.add(runtimeClue.id);
+  if (gameState.hoveredClueId === runtimeClue.id) gameState.hoveredClueId = null;
 
   const now = Date.now();
   if (gameState.lastFoundAt && (now - gameState.lastFoundAt) <= COMBO_WINDOW_SECONDS * 1000) {
@@ -759,35 +767,6 @@ function handleWrongClick() {
 }
 
 
-function useHint() {
-  if (gameState.mode !== "playing" || gameState.hintsRemaining <= 0) return;
-
-  const remaining = gameState.runtimeClues.filter((clue) => !gameState.foundClues.has(clue.id));
-  if (remaining.length === 0) return;
-
-  const clue = remaining[Math.floor(Math.random() * remaining.length)];
-  gameState.hintsRemaining -= 1;
-  gameState.score = Math.max(0, gameState.score - HINT_PENALTY);
-  gameState.hintedClueId = clue.id;
-  gameState.hintPulseUntil = Date.now() + 1800;
-  showFeedback(`Hint: look for ${clue.source.name} (-${HINT_PENALTY})`, "positive");
-  updateUI();
-  render();
-}
-
-function drawHintPulse() {
-  if (!gameState.hintedClueId || Date.now() > gameState.hintPulseUntil) return;
-  const clue = gameState.runtimeClues.find((item) => item.id === gameState.hintedClueId);
-  if (!clue || gameState.foundClues.has(clue.id)) return;
-
-  const pulse = 0.55 + Math.sin(Date.now() / 90) * 0.25;
-  ctx.save();
-  ctx.strokeStyle = `rgba(255, 220, 90, ${pulse})`;
-  ctx.lineWidth = 6;
-  ctx.setLineDash([12, 8]);
-  ctx.strokeRect(clue.hitbox.x - 8, clue.hitbox.y - 8, clue.hitbox.width + 16, clue.hitbox.height + 16);
-  ctx.restore();
-}
 
 
 function showFoundEvidencePopup(evidenceName, detailText = "Case file updated") {
@@ -874,7 +853,7 @@ function calculateStars() {
   const remaining = Math.ceil(gameState.timerRemaining);
   let stars = 1;
   if (gameState.wrongClicks <= 3 && remaining >= Math.ceil(TIMER_DURATION_SECONDS * 0.25)) stars = 2;
-  if (gameState.wrongClicks === 0 && gameState.hintsRemaining === HINTS_PER_LEVEL && remaining >= Math.ceil(TIMER_DURATION_SECONDS * 0.4)) stars = 3;
+  if (gameState.wrongClicks === 0 && remaining >= Math.ceil(TIMER_DURATION_SECONDS * 0.4)) stars = 3;
   return stars;
 }
 
@@ -1032,8 +1011,6 @@ function updateUI() {
   if (levelNameElement) levelNameElement.textContent = level.name;
   if (scoreValueElement) scoreValueElement.textContent = String(gameState.score);
   if (wrongClickValueElement) wrongClickValueElement.textContent = String(gameState.wrongClicks);
-  if (hintCountElement) hintCountElement.textContent = String(gameState.hintsRemaining);
-  if (hintButton) hintButton.disabled = gameState.hintsRemaining <= 0 || gameState.mode !== "playing";
   updateTimerUI();
   updateClueList();
 }
@@ -1316,7 +1293,6 @@ function render() {
   if (gameState.debugZones || gameState.editorTool === "zone") drawDebugPlacementZones();
   if (gameState.debugHitboxes || gameState.editorMode) drawDebugHitboxes();
   if (gameState.editorMode) drawEditorSelection();
-  drawHintPulse();
   updateFeedbackToast();
   updateWrongFlash();
   drawStatusText();
@@ -1355,8 +1331,26 @@ function drawClues() {
       drawMissingClueBox(runtimeClue);
       return;
     }
+    if (!gameState.editorMode && runtimeClue.id === gameState.hoveredClueId) {
+      drawClueGlow(runtimeClue);
+    }
     drawRotatedImage(image, runtimeClue.x, runtimeClue.y, runtimeClue.width, runtimeClue.height, runtimeClue.rotation || 0);
   });
+}
+
+function drawClueGlow(runtimeClue) {
+  ctx.save();
+  ctx.shadowColor = "rgba(255, 220, 120, 0.9)";
+  ctx.shadowBlur = 22;
+  ctx.strokeStyle = "rgba(255, 220, 120, 0.55)";
+  ctx.lineWidth = 4;
+  ctx.strokeRect(
+    runtimeClue.hitbox.x - 5,
+    runtimeClue.hitbox.y - 5,
+    runtimeClue.hitbox.width + 10,
+    runtimeClue.hitbox.height + 10
+  );
+  ctx.restore();
 }
 
 function drawRotatedImage(image, x, y, width, height, rotationDegrees) {
@@ -1499,30 +1493,18 @@ function updateMobileLayout() {
   document.body.classList.toggle("is-mobile", mobile);
   document.body.classList.toggle("is-portrait", mobile && portrait);
   document.body.classList.toggle("is-landscape", mobile && landscape);
-  document.body.classList.toggle("mobile-mode-pan", mobile && gameState.mobilePlayMode === "pan");
-  document.body.classList.toggle("mobile-mode-fullscreen", mobile && gameState.mobilePlayMode === "fullscreen");
 
   if (!mobileOrientationOverlay) return;
 
-  const needsModeChoice = mobile && portrait && gameState.mobilePlayMode !== "pan";
-  if (needsModeChoice) {
+  if (mobile && portrait) {
     mobileOrientationOverlay.classList.remove("hidden");
   } else {
     mobileOrientationOverlay.classList.add("hidden");
-  }
-
-  if (mobile && gameState.mobilePlayMode === "pan") {
-    window.setTimeout(centerPortraitPanView, 80);
   }
 }
 
 async function handleRotateScreenButton() {
   unlockGameAudio();
-  gameState.mobilePlayMode = "fullscreen";
-  localStorage.setItem("TIKUS_MOBILE_PLAY_MODE", "fullscreen");
-  document.body.classList.remove("mobile-mode-pan");
-  document.body.classList.add("mobile-mode-fullscreen");
-
   try {
     const target = appShell || document.documentElement;
 
@@ -1538,26 +1520,6 @@ async function handleRotateScreenButton() {
   }
 
   setTimeout(updateMobileLayout, 150);
-}
-
-function enablePortraitPanMode() {
-  unlockGameAudio();
-  gameState.mobilePlayMode = "pan";
-  localStorage.setItem("TIKUS_MOBILE_PLAY_MODE", "pan");
-
-  if (document.fullscreenElement) {
-    document.exitFullscreen().catch((error) => console.warn("Could not exit fullscreen.", error));
-  }
-
-  if (mobileOrientationOverlay) mobileOrientationOverlay.classList.add("hidden");
-  updateMobileLayout();
-  window.setTimeout(centerPortraitPanView, 120);
-}
-
-function centerPortraitPanView() {
-  if (!document.body.classList.contains("mobile-mode-pan")) return;
-  const targetX = Math.max(0, (1280 - window.innerWidth) / 2);
-  window.scrollTo({ left: targetX, top: 0, behavior: "instant" in window ? "instant" : "auto" });
 }
 
 function hideLoadingOverlay() {
@@ -1587,7 +1549,6 @@ function buildLevelReportHtml(level) {
       <div class="result-pill"><span>Rating</span><strong>${getStarText(gameState.currentLevelStars)}</strong></div>
       <div class="result-pill"><span>Time Bonus</span><strong>+${gameState.currentLevelTimeBonus}</strong></div>
       <div class="result-pill"><span>Wrong</span><strong>${gameState.wrongClicks}</strong></div>
-      <div class="result-pill"><span>Hints Left</span><strong>${gameState.hintsRemaining}</strong></div>
       <div class="result-pill"><span>Score</span><strong>${gameState.score}</strong></div>
     </div>
     <strong>Evidence report:</strong>

@@ -196,3 +196,15 @@ Each clue found adds 3 seconds to the current room timer and displays the bonus 
 - Orchid En-Suite: clean-up, medicine, mud transfer, and an unknown vial.
 - Kitchen: service route, deliveries, ingredients, accounts, and timing.
 - Garden: escape route, blackmail motive, hidden records, and cover-up tools.
+
+
+## Clean hover build update
+
+Changes:
+- Removed Portrait Pan Mode. Mobile now uses the landscape/fullscreen flow only.
+- Removed the hint feature and all hint UI.
+- Added a soft glow when the player hovers over a clickable clue on desktop.
+- Kept the 6-room / 6-clue structure.
+- Kept the 25-second timer and +3 seconds per clue found.
+- Kept hidden editor access through triple-clicking the Feisk logo and entering `0707`.
+- Tidied the mobile/fullscreen logic by removing unused portrait-pan code paths.

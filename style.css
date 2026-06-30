@@ -505,19 +505,6 @@ body.is-mobile.is-portrait .mobile-editor-buttons {
 
 
 /* Fun feature UI */
-.hint-button {
-  flex: 0 0 auto;
-  white-space: nowrap;
-  padding: .48rem .72rem;
-  border-radius: 999px;
-  font: 800 .78rem/1 Arial, sans-serif;
-}
-
-.hint-button:disabled {
-  opacity: .45;
-  cursor: not-allowed;
-}
-
 .room-intro-overlay {
   position: absolute;
   inset: 0;
@@ -646,11 +633,6 @@ body.is-mobile.is-portrait .mobile-editor-buttons {
 
 .level-report li {
   margin: .18rem 0;
-}
-
-body.is-mobile .hint-button {
-  padding: .38rem .55rem;
-  font-size: .68rem;
 }
 
 body.is-mobile .feedback-toast {
@@ -830,105 +812,25 @@ body.is-mobile .editor-keypad-grid button {
 }
 
 
-/* Mobile responsiveness repair: fullscreen + portrait pan modes */
-body.is-mobile {
-  overflow: hidden;
+
+/* In portrait, do not fade or disable controls once the user chooses pan mode. */
+body.mobile-mode-pan.is-portrait .level-title-overlay,
+body.mobile-mode-pan.is-portrait .stats-overlay,
+body.mobile-mode-pan.is-portrait .clue-footer,
+body.mobile-mode-pan.is-portrait .editor-help-overlay,
+body.mobile-mode-pan.is-portrait .mobile-editor-buttons {
+  opacity: 1;
+  pointer-events: auto;
 }
 
-.mobile-mode-buttons {
-  margin-top: .85rem;
+/* Keypad must always appear above fullscreen/game UI. */
+.editor-keypad-modal:not(.hidden) {
+  display: grid !important;
 }
 
-body.mobile-mode-pan {
-  position: static !important;
-  width: 100vw;
-  height: 100dvh;
-  overflow: auto !important;
-  padding: 0;
-  background: #000;
-  -webkit-overflow-scrolling: touch;
-}
 
-body.mobile-mode-pan .app-shell,
-body.mobile-mode-pan .game-layout,
-body.mobile-mode-pan .stage-column {
-  position: static !important;
-  inset: auto !important;
-  width: max(100vw, 1280px) !important;
-  height: auto !important;
-  min-height: 100dvh;
-  max-width: none !important;
-  margin: 0 !important;
-  padding: 0 !important;
-  display: block !important;
-  background: #000;
-}
 
-body.mobile-mode-pan .canvas-frame {
-  position: relative !important;
-  inset: auto !important;
-  width: 1280px !important;
-  height: 720px !important;
-  max-width: none !important;
-  max-height: none !important;
-  aspect-ratio: auto !important;
-  overflow: hidden;
-  border: 0;
-  border-radius: 0;
-  box-shadow: none;
-  touch-action: pan-x pan-y;
-}
-
-body.mobile-mode-pan #gameCanvas {
-  position: absolute;
-  inset: 0;
-  width: 1280px !important;
-  height: 720px !important;
-  touch-action: pan-x pan-y;
-}
-
-body.mobile-mode-pan .clue-footer {
-  position: sticky;
-  left: 0;
-  bottom: 0;
-  width: 100vw !important;
-  min-height: var(--footer-height);
-  margin-top: 0;
-  z-index: 20;
-}
-
-body.mobile-mode-pan .mobile-orientation-overlay {
-  position: fixed;
-}
-
-body.mobile-mode-pan .level-title-overlay,
-body.mobile-mode-pan .stats-overlay {
-  position: fixed;
-}
-
-body.mobile-mode-pan .room-intro-overlay,
-body.mobile-mode-pan .loading-overlay,
-body.mobile-mode-pan .level-complete-overlay {
-  position: fixed;
-  inset: 0;
-}
-
-body.mobile-mode-pan .found-evidence-popup {
-  position: fixed;
-}
-
-body.mobile-mode-pan .mobile-editor-buttons {
-  position: fixed;
-}
-
-body.mobile-mode-fullscreen .editor-keypad-modal,
-body.mobile-mode-pan .editor-keypad-modal,
-body.mobile-mode-fullscreen .export-modal,
-body.mobile-mode-pan .export-modal {
-  position: fixed;
-  z-index: 1000;
-}
-
+/* Mobile completion report fit */
 .complete-card,
 .export-card,
 .editor-keypad-card,
@@ -980,27 +882,7 @@ body.is-mobile .level-report li {
   font-size: .78rem;
 }
 
-body.is-mobile .button-row {
-  gap: .45rem;
-}
-
-body.is-mobile .complete-card .button-row button {
-  padding: .48rem .58rem;
-  font-size: .78rem;
-}
-
-/* In portrait, do not fade or disable controls once the user chooses pan mode. */
-body.mobile-mode-pan.is-portrait .level-title-overlay,
-body.mobile-mode-pan.is-portrait .stats-overlay,
-body.mobile-mode-pan.is-portrait .clue-footer,
-body.mobile-mode-pan.is-portrait .editor-help-overlay,
-body.mobile-mode-pan.is-portrait .mobile-editor-buttons {
-  opacity: 1;
-  pointer-events: auto;
-}
-
-/* Keypad must always appear above fullscreen/game UI. */
 .editor-keypad-modal:not(.hidden) {
   display: grid !important;
+  z-index: 1000;
 }
-

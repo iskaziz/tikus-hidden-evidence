@@ -31,6 +31,10 @@ const editorModeLabel = document.getElementById("editorModeLabel");
 const roomIntroOverlay = document.getElementById("roomIntroOverlay");
 const introRoomName = document.getElementById("introRoomName");
 const introRoomText = document.getElementById("introRoomText");
+const introCharacterPanel = document.getElementById("introCharacterPanel");
+const introCharacterImage = document.getElementById("introCharacterImage");
+const introCharacterName = document.getElementById("introCharacterName");
+const introCharacterLine = document.getElementById("introCharacterLine");
 const startRoomButton = document.getElementById("startRoomButton");
 const feedbackToast = document.getElementById("feedbackToast");
 const foundEvidencePopup = document.getElementById("foundEvidencePopup");
@@ -73,7 +77,6 @@ const CLUE_SCALE = GAME_DATA.settings.clueScale || 1;
 const TIMER_DURATION_SECONDS = Number(GAME_DATA.settings.timerDurationSeconds || 20);
 const CLUE_TIME_BONUS_SECONDS = Number(GAME_DATA.settings.clueTimeBonusSeconds || 0);
 const WRONG_CLICK_PENALTY = Number(GAME_DATA.settings.wrongClickPenalty || 10);
-const TIME_BONUS_PER_SECOND = Number(GAME_DATA.settings.timeBonusPerSecond || 10);
 const COMBO_BONUS_STEP = Number(GAME_DATA.settings.comboBonusStep || 25);
 const COMBO_WINDOW_SECONDS = Number(GAME_DATA.settings.comboWindowSeconds || 4);
 const MOUSE_BONUS = Number(GAME_DATA.settings.mouseBonus || 25);
@@ -479,6 +482,7 @@ function collectImagePaths() {
   const paths = new Set();
   editorData.levels.forEach((level) => {
     paths.add(level.roomImage);
+    if (level.introCharacterImage) paths.add(level.introCharacterImage);
     level.clues.forEach((clue) => paths.add(clue.image));
   });
   return Array.from(paths);
@@ -893,9 +897,7 @@ function collectClue(runtimeClue) {
 function completeCurrentLevelSuccessfully() {
   gameState.mode = "level_complete";
   stopLevelTimer();
-  const remainingSeconds = Math.ceil(gameState.timerRemaining);
-  gameState.currentLevelTimeBonus = Math.max(0, remainingSeconds * TIME_BONUS_PER_SECOND);
-  gameState.score += gameState.currentLevelTimeBonus;
+  gameState.currentLevelTimeBonus = 0;
   gameState.currentLevelStars = calculateStars();
   if (!gameState.currentLevelScoreBanked) {
     gameState.totalRunScore += gameState.score;
@@ -1001,8 +1003,8 @@ function updateWrongFlash() {
 function calculateStars() {
   const remaining = Math.ceil(gameState.timerRemaining);
   let stars = 1;
-  if (gameState.wrongClicks <= 3 && remaining >= Math.ceil(TIMER_DURATION_SECONDS * 0.25)) stars = 2;
-  if (gameState.wrongClicks === 0 && remaining >= Math.ceil(TIMER_DURATION_SECONDS * 0.4)) stars = 3;
+  if (gameState.wrongClicks <= 3 && remaining >= Math.ceil(getCurrentLevelTimerDuration() * 0.25)) stars = 2;
+  if (gameState.wrongClicks === 0 && remaining >= Math.ceil(getCurrentLevelTimerDuration() * 0.4)) stars = 3;
   return stars;
 }
 
@@ -1081,14 +1083,37 @@ function checkMouseClick(x, y) {
 function showRoomIntroOverlay() {
   const level = getCurrentLevel();
   if (!roomIntroOverlay) return;
+
   if (introRoomName) introRoomName.textContent = level.name;
   if (introRoomText) introRoomText.textContent = level.introText || "Search the room before time runs out.";
+
+  const hasCharacter = Boolean(level.introCharacterImage);
+  if (introCharacterPanel) introCharacterPanel.classList.toggle("hidden", !hasCharacter);
+  if (introCharacterImage) {
+    introCharacterImage.classList.toggle("hidden", !hasCharacter);
+    introCharacterImage.src = hasCharacter ? level.introCharacterImage : "";
+    introCharacterImage.alt = level.introCharacterName || "Room intro character";
+  }
+  if (introCharacterName) {
+    introCharacterName.classList.toggle("hidden", !level.introCharacterName);
+    introCharacterName.textContent = level.introCharacterName || "";
+  }
+  if (introCharacterLine) {
+    introCharacterLine.classList.toggle("hidden", !level.introCharacterLine);
+    introCharacterLine.textContent = level.introCharacterLine || "";
+  }
+
   roomIntroOverlay.classList.remove("hidden");
+}
+
+function getCurrentLevelTimerDuration() {
+  const level = getCurrentLevel();
+  return Number(level.timerDurationSeconds || editorData.settings.timerDurationSeconds || TIMER_DURATION_SECONDS);
 }
 
 function resetLevelTimer() {
   stopLevelTimer();
-  gameState.timerRemaining = TIMER_DURATION_SECONDS;
+  gameState.timerRemaining = getCurrentLevelTimerDuration();
   gameState.timerLastTick = 0;
   updateTimerUI();
 }
@@ -1518,27 +1543,10 @@ function drawClues() {
       drawMissingClueBox(runtimeClue);
       return;
     }
-    if (!gameState.editorMode && runtimeClue.id === gameState.hoveredClueId) {
-      drawClueGlow(runtimeClue);
-    }
     drawClueImage(image, runtimeClue);
   });
 }
 
-function drawClueGlow(runtimeClue) {
-  ctx.save();
-  ctx.shadowColor = "rgba(255, 220, 120, 0.9)";
-  ctx.shadowBlur = 22;
-  ctx.strokeStyle = "rgba(255, 220, 120, 0.55)";
-  ctx.lineWidth = 4;
-  ctx.strokeRect(
-    runtimeClue.hitbox.x - 5,
-    runtimeClue.hitbox.y - 5,
-    runtimeClue.hitbox.width + 10,
-    runtimeClue.hitbox.height + 10
-  );
-  ctx.restore();
-}
 
 function drawClueImage(image, runtimeClue) {
   const opacity = clamp(Number(runtimeClue.opacity ?? 1), 0.15, 1);
@@ -1756,7 +1764,6 @@ function buildLevelReportHtml(level) {
   return `
     <div class="result-summary">
       <div class="result-pill"><span>Rating</span><strong>${getStarText(gameState.currentLevelStars)}</strong></div>
-      <div class="result-pill"><span>Time Bonus</span><strong>+${gameState.currentLevelTimeBonus}</strong></div>
       <div class="result-pill"><span>Wrong</span><strong>${gameState.wrongClicks}</strong></div>
       <div class="result-pill"><span>Score</span><strong>${gameState.score}</strong></div>
     </div>

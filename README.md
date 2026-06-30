@@ -259,3 +259,50 @@ Zone resizing has also been expanded:
 - Mobile/editor buttons now include Zone W-/W+/H-/H+ controls.
 
 This helps clues blend better with room lighting without editing the PNG files.
+
+
+## Character intro popup update
+
+This build adds isolated character PNGs and displays them in the room intro popup.
+
+New character assets:
+
+```text
+assets/characters/character_banana_man.png
+assets/characters/character_black_shirt_man.png
+assets/characters/character_kebaya_woman.png
+assets/characters/character_bald_man.png
+assets/characters/character_headwrap_woman.png
+```
+
+Each level now supports:
+
+```js
+introCharacterImage
+introCharacterName
+introCharacterLine
+```
+
+The character images are preloaded with the rest of the game assets and shown before the timer starts.
+
+
+## Speech bubble / timer update
+
+Changes in this build:
+- Removed the end-of-level time bonus scoring.
+- Timer remains 25 seconds for levels 1-3.
+- Levels 4-6 now use 20 seconds via per-level `timerDurationSeconds`.
+- The +3 seconds per clue found remains active.
+- Removed the clue hover glow.
+- Character intro dialogue now appears inside a speech bubble.
+- Only two intro characters are reused across the six levels.
+
+
+## Corner character intro update
+
+The room intro no longer uses a centered card/box overlay. The intro character is enlarged and anchored to the bottom-left corner of the game level, with the speech bubble and Start Search button placed beside the character.
+
+
+## Speech bubble position refinement
+
+The intro speech panel has been moved higher and closer to the character's head. The speech bubble tail now points from the bubble toward the character more directly.

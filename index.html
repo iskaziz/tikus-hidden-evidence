@@ -62,11 +62,18 @@
           </div>
 
           <div id="roomIntroOverlay" class="room-intro-overlay hidden">
-            <div class="intro-card">
-              <span class="intro-kicker">New Room</span>
-              <h2 id="introRoomName">Room</h2>
-              <p id="introRoomText">Search the room before time runs out.</p>
-              <button id="startRoomButton" type="button">Start Search</button>
+            <div class="intro-corner-scene">
+              <div id="introCharacterPanel" class="intro-character-panel">
+                <img id="introCharacterImage" class="intro-character-image" src="" alt="" />
+              </div>
+              <div class="intro-speech-panel">
+                <span class="intro-kicker">New Room</span>
+                <h2 id="introRoomName">Room</h2>
+                <div id="introCharacterName" class="intro-character-name"></div>
+                <div id="introCharacterLine" class="intro-speech-bubble"></div>
+                <p id="introRoomText">Search the room before time runs out.</p>
+                <button id="startRoomButton" type="button">Start Search</button>
+              </div>
             </div>
           </div>
 

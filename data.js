@@ -2,12 +2,11 @@
   TIKUS: Hidden Evidence
   data.js
 
-  Clean six-room build:
-  - 6 rooms
-  - 6 clues per room
-  - 25 second timer
-  - +3 seconds per clue found
-  - hint feature removed
+  Character speech-bubble intro build.
+  - Levels 1-3 use default 25 second timer
+  - Levels 4-6 use 20 second timer
+  - +3 seconds per clue found remains active
+  - End-of-level time bonus scoring removed
 */
 
 const GAME_DATA = {
@@ -20,7 +19,6 @@ const GAME_DATA = {
     "mouseBonus": 25,
     "comboWindowSeconds": 4,
     "comboBonusStep": 25,
-    "timeBonusPerSecond": 10,
     "wrongClickPenalty": 10,
     "timerDurationSeconds": 25,
     "clueTimeBonusSeconds": 3
@@ -181,7 +179,10 @@ const GAME_DATA = {
           "description": "Lipstick on crystal suggests someone stayed for a drink longer than they admitted.",
           "suspectTag": "Social guest"
         }
-      ]
+      ],
+      "introCharacterImage": "assets/characters/character_banana_man.png",
+      "introCharacterName": "The Nervous Guest",
+      "introCharacterLine": "This room is too neat. Someone cleaned the truth before we arrived."
     },
     {
       "id": "dining_room",
@@ -338,7 +339,10 @@ const GAME_DATA = {
           "description": "A burnt fragment links the dinner to a message someone wanted erased.",
           "suspectTag": "Destroyed message"
         }
-      ]
+      ],
+      "introCharacterImage": "assets/characters/character_kebaya_woman.png",
+      "introCharacterName": "The Watchful Host",
+      "introCharacterLine": "Dinner tells you everything. Who sat where. Who reached for what. Who lied."
     },
     {
       "id": "orchid_room",
@@ -497,7 +501,10 @@ const GAME_DATA = {
           "description": "The brass key suggests someone used the garden-side route to reach a locked space.",
           "suspectTag": "Locked access"
         }
-      ]
+      ],
+      "introCharacterImage": "assets/characters/character_banana_man.png",
+      "introCharacterName": "The Nervous Guest",
+      "introCharacterLine": "The orchids are quiet, but something moved through here in a hurry."
     },
     {
       "id": "orchid_ensuite",
@@ -655,7 +662,11 @@ const GAME_DATA = {
           "description": "The dark vial does not belong in a normal en-suite.",
           "suspectTag": "Unknown substance"
         }
-      ]
+      ],
+      "introCharacterImage": "assets/characters/character_kebaya_woman.png",
+      "introCharacterName": "The Watchful Host",
+      "introCharacterLine": "Someone came here to wash something away. Find what they missed.",
+      "timerDurationSeconds": 20
     },
     {
       "id": "kitchen",
@@ -814,7 +825,11 @@ const GAME_DATA = {
           "description": "The broken watch may fix the timing of movement through the service area.",
           "suspectTag": "Timeline clue"
         }
-      ]
+      ],
+      "introCharacterImage": "assets/characters/character_banana_man.png",
+      "introCharacterName": "The Nervous Guest",
+      "introCharacterLine": "Everything passes through the kitchen eventually. Food, gossip, poison.",
+      "timerDurationSeconds": 20
     },
     {
       "id": "garden",
@@ -979,7 +994,11 @@ const GAME_DATA = {
           "description": "Fresh paint residue suggests someone covered marks near the garden route.",
           "suspectTag": "Covered marks"
         }
-      ]
+      ],
+      "introCharacterImage": "assets/characters/character_kebaya_woman.png",
+      "introCharacterName": "The Watchful Host",
+      "introCharacterLine": "Outside is where people go when they do not want to be seen.",
+      "timerDurationSeconds": 20
     }
   ]
 };

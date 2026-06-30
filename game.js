@@ -52,6 +52,7 @@ const appShell = document.getElementById("appShell");
 const canvasFrame = document.getElementById("canvasFrame");
 const mobileOrientationOverlay = document.getElementById("mobileOrientationOverlay");
 const rotateScreenButton = document.getElementById("rotateScreenButton");
+const portraitPanButton = document.getElementById("portraitPanButton");
 
 const feiskLogoButton = document.getElementById("feiskLogoButton");
 const editorKeypadModal = document.getElementById("editorKeypadModal");
@@ -65,6 +66,7 @@ const BASE_WIDTH = GAME_DATA.settings.baseWidth;
 const BASE_HEIGHT = GAME_DATA.settings.baseHeight;
 const CLUE_SCALE = GAME_DATA.settings.clueScale || 1;
 const TIMER_DURATION_SECONDS = Number(GAME_DATA.settings.timerDurationSeconds || 20);
+const CLUE_TIME_BONUS_SECONDS = Number(GAME_DATA.settings.clueTimeBonusSeconds || 0);
 const HINTS_PER_LEVEL = Number(GAME_DATA.settings.hintsPerLevel || 3);
 const HINT_PENALTY = Number(GAME_DATA.settings.hintPenalty || 50);
 const WRONG_CLICK_PENALTY = Number(GAME_DATA.settings.wrongClickPenalty || 10);
@@ -117,6 +119,7 @@ const gameState = {
   toastText: "",
   toastKind: "",
   foundEvidencePopupTimeout: null,
+  mobilePlayMode: localStorage.getItem("TIKUS_MOBILE_PLAY_MODE") || "",
   editorUnlocked: false,
   logoTapCount: 0,
   lastLogoTapAt: 0,
@@ -169,6 +172,7 @@ function bindEvents() {
   if (downloadLevelButton) downloadLevelButton.addEventListener("click", () => downloadTextFile(`${getCurrentLevel().id}_level_export.js`, buildCurrentLevelExport()));
   if (closeExportButton) closeExportButton.addEventListener("click", closeExportPanel);
   if (rotateScreenButton) rotateScreenButton.addEventListener("click", handleRotateScreenButton);
+  if (portraitPanButton) portraitPanButton.addEventListener("click", enablePortraitPanMode);
   if (feiskLogoButton) {
     feiskLogoButton.addEventListener("click", handleLogoSecretTap);
     feiskLogoButton.addEventListener("keydown", (event) => {
@@ -715,11 +719,16 @@ function collectClue(runtimeClue) {
 
   const comboBonus = gameState.comboStreak > 1 ? (gameState.comboStreak - 1) * COMBO_BONUS_STEP : 0;
   gameState.score += 100 + comboBonus;
+  if (CLUE_TIME_BONUS_SECONDS > 0 && gameState.mode === "playing") {
+    gameState.timerRemaining += CLUE_TIME_BONUS_SECONDS;
+    updateTimerUI();
+  }
   gameState.currentLevelCompletedClues.push(runtimeClue.source.name);
 
   const link = getClueConnectionText(runtimeClue.source);
   const comboText = comboBonus > 0 ? ` · Combo x${gameState.comboStreak} +${comboBonus}` : "";
-  showFoundEvidencePopup(runtimeClue.source.name, `${comboBonus > 0 ? `Combo x${gameState.comboStreak} +${comboBonus} · ` : ""}${link || "Case file updated"}`);
+  const timeText = CLUE_TIME_BONUS_SECONDS > 0 ? `Time +${CLUE_TIME_BONUS_SECONDS}s · ` : "";
+  showFoundEvidencePopup(runtimeClue.source.name, `${timeText}${comboBonus > 0 ? `Combo x${gameState.comboStreak} +${comboBonus} · ` : ""}${link || "Case file updated"}`);
 
   playGameSound("clueFound");
 
@@ -1060,7 +1069,10 @@ function handleLogoSecretTap() {
   }
 }
 
-function openEditorKeypad() {
+async function openEditorKeypad() {
+  if (document.fullscreenElement && document.fullscreenElement === canvasFrame) {
+    try { await document.exitFullscreen(); } catch (error) { console.warn("Could not exit fullscreen for keypad.", error); }
+  }
   gameState.editorCodeInput = "";
   updateEditorCodeDisplay();
   if (editorKeypadStatus) editorKeypadStatus.textContent = "";
@@ -1487,20 +1499,32 @@ function updateMobileLayout() {
   document.body.classList.toggle("is-mobile", mobile);
   document.body.classList.toggle("is-portrait", mobile && portrait);
   document.body.classList.toggle("is-landscape", mobile && landscape);
+  document.body.classList.toggle("mobile-mode-pan", mobile && gameState.mobilePlayMode === "pan");
+  document.body.classList.toggle("mobile-mode-fullscreen", mobile && gameState.mobilePlayMode === "fullscreen");
 
   if (!mobileOrientationOverlay) return;
 
-  if (mobile && portrait) {
+  const needsModeChoice = mobile && portrait && gameState.mobilePlayMode !== "pan";
+  if (needsModeChoice) {
     mobileOrientationOverlay.classList.remove("hidden");
   } else {
     mobileOrientationOverlay.classList.add("hidden");
+  }
+
+  if (mobile && gameState.mobilePlayMode === "pan") {
+    window.setTimeout(centerPortraitPanView, 80);
   }
 }
 
 async function handleRotateScreenButton() {
   unlockGameAudio();
+  gameState.mobilePlayMode = "fullscreen";
+  localStorage.setItem("TIKUS_MOBILE_PLAY_MODE", "fullscreen");
+  document.body.classList.remove("mobile-mode-pan");
+  document.body.classList.add("mobile-mode-fullscreen");
+
   try {
-    const target = canvasFrame || appShell || document.documentElement;
+    const target = appShell || document.documentElement;
 
     if (!document.fullscreenElement && target && target.requestFullscreen) {
       await target.requestFullscreen({ navigationUI: "hide" });
@@ -1516,6 +1540,26 @@ async function handleRotateScreenButton() {
   setTimeout(updateMobileLayout, 150);
 }
 
+function enablePortraitPanMode() {
+  unlockGameAudio();
+  gameState.mobilePlayMode = "pan";
+  localStorage.setItem("TIKUS_MOBILE_PLAY_MODE", "pan");
+
+  if (document.fullscreenElement) {
+    document.exitFullscreen().catch((error) => console.warn("Could not exit fullscreen.", error));
+  }
+
+  if (mobileOrientationOverlay) mobileOrientationOverlay.classList.add("hidden");
+  updateMobileLayout();
+  window.setTimeout(centerPortraitPanView, 120);
+}
+
+function centerPortraitPanView() {
+  if (!document.body.classList.contains("mobile-mode-pan")) return;
+  const targetX = Math.max(0, (1280 - window.innerWidth) / 2);
+  window.scrollTo({ left: targetX, top: 0, behavior: "instant" in window ? "instant" : "auto" });
+}
+
 function hideLoadingOverlay() {
   if (loadingOverlay) loadingOverlay.classList.add("hidden");
 }
@@ -1523,13 +1567,12 @@ function hideLoadingOverlay() {
 
 function buildLevelAssessmentText(level) {
   const id = level.id || "";
-  if (id.includes("telephone")) return "The room suggests deliberate communication sabotage.";
-  if (id.includes("dining")) return "The interrupted meal now reads like a staged social performance.";
-  if (id.includes("orchid")) return "The trail points toward garden access and quiet movement through the retreat.";
-  if (id.includes("kitchen")) return "Service areas reveal who could move unseen behind the mansion's polished front.";
-  if (id.includes("office")) return "Paperwork and private records suggest motive, pressure, and concealed arrangements.";
-  if (id.includes("steam")) return "The wellness machinery feels less therapeutic and more like opportunity.";
-  if (id.includes("work")) return "The maintenance area hints at repair, cover-up, and practical access.";
+  if (id.includes("grand_sitting_room")) return "The sitting room points to a performed family scene: private drinks, calculated strategy, and a conversation someone wanted kept off the record.";
+  if (id.includes("dining")) return "The dining room points to the main incident: seating order, tea, a broken cup, and a destroyed message.";
+  if (id.includes("orchid_room")) return "The orchid room links the inside of the retreat to a quieter garden-side route and access to tools or chemicals.";
+  if (id.includes("orchid_ensuite")) return "The en-suite suggests a hurried clean-up involving medicine, oil, mud, and an unknown vial.";
+  if (id.includes("kitchen")) return "The kitchen exposes the service route: deliveries, ingredients, paperwork, and the timing of movement behind the scenes.";
+  if (id.includes("garden")) return "The garden ties motive to escape: blackmail, concealed records, outdoor footprints, and tools for covering traces.";
   return "The evidence in this room has been collected and added to the case file.";
 }
 

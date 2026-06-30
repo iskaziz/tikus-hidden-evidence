@@ -142,3 +142,57 @@ Editor controls are hidden by default. To unlock Editor Mode:
 3. Editor Mode opens.
 
 The **E** key now exits Editor Mode only after it has been unlocked; it no longer opens the editor directly.
+
+
+## Mobile responsiveness update
+
+This build adds two mobile play options:
+
+1. **Landscape Fullscreen** — uses fullscreen on the full app shell instead of only the canvas, so overlays such as the keypad can remain visible.
+2. **Portrait Pan Mode** — keeps the phone in portrait and lets the player pan/scroll across the 1280×720 room.
+
+Other mobile fixes:
+- Evidence report and final evidence board are now scrollable.
+- Completion overlays have mobile max-height and internal scrolling.
+- The hidden editor keypad now appears above the game UI and is not trapped behind the fullscreen canvas.
+
+
+## Six-room story pass
+
+The game has been reduced to 6 rooms with 6 clues per room:
+
+1. Grand Sitting Room
+2. Dining Room
+3. Orchid Room
+4. Orchid En-Suite
+5. Kitchen
+6. Garden
+
+Removed rooms:
+- Entry Hall
+- Telephone Nook
+- Office Study
+- Steam Room
+- Work Area
+
+Office Study has been replaced with Garden using `assets/rooms/garden_bg.png`.
+
+## Timer update
+
+Timer settings are now:
+
+```js
+timerDurationSeconds: 25,
+clueTimeBonusSeconds: 3
+```
+
+Each clue found adds 3 seconds to the current room timer and displays the bonus in the bottom-right Found Evidence popup.
+
+## Story logic summary
+
+- Grand Sitting Room: family performance, private drinks, and staged behaviour.
+- Dining Room: seating order, tea, panic, and destroyed correspondence.
+- Orchid Room: garden-side route, plants, tools, and chemical access.
+- Orchid En-Suite: clean-up, medicine, mud transfer, and an unknown vial.
+- Kitchen: service route, deliveries, ingredients, accounts, and timing.
+- Garden: escape route, blackmail motive, hidden records, and cover-up tools.

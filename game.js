@@ -17,7 +17,6 @@ const ctx = canvas.getContext("2d");
 
 const clueListElement = document.getElementById("clueList");
 const scoreValueElement = document.getElementById("scoreValue");
-const wrongClickValueElement = document.getElementById("wrongClickValue");
 const timerValueElement = document.getElementById("timerValue");
 const levelNameElement = document.getElementById("levelName");
 
@@ -76,10 +75,9 @@ const BASE_HEIGHT = GAME_DATA.settings.baseHeight;
 const CLUE_SCALE = GAME_DATA.settings.clueScale || 1;
 const TIMER_DURATION_SECONDS = Number(GAME_DATA.settings.timerDurationSeconds || 20);
 const CLUE_TIME_BONUS_SECONDS = Number(GAME_DATA.settings.clueTimeBonusSeconds || 0);
-const WRONG_CLICK_PENALTY = Number(GAME_DATA.settings.wrongClickPenalty || 10);
 const COMBO_BONUS_STEP = Number(GAME_DATA.settings.comboBonusStep || 25);
 const COMBO_WINDOW_SECONDS = Number(GAME_DATA.settings.comboWindowSeconds || 4);
-const MOUSE_BONUS = Number(GAME_DATA.settings.mouseBonus || 25);
+
 const SOUND_PATHS = {
   clueFound: "assets/audio/clue_twang.wav",
   levelComplete: "assets/audio/level_complete_chime.wav",
@@ -114,14 +112,12 @@ const gameState = {
   foundClues: new Set(),
   runtimeClues: [],
   score: 0,
-  wrongClicks: 0,
   comboStreak: 0,
   lastFoundAt: 0,
   currentLevelTimeBonus: 0,
   currentLevelStars: 0,
   currentLevelCompletedClues: [],
   foundLevelIds: new Set(),
-  wrongFlashUntil: 0,
   toastUntil: 0,
   toastText: "",
   toastKind: "",
@@ -130,16 +126,6 @@ const gameState = {
   logoTapCount: 0,
   lastLogoTapAt: 0,
   editorCodeInput: "",
-  mouse: {
-    active: false,
-    x: -80,
-    y: 620,
-    width: 42,
-    height: 18,
-    speed: 90,
-    direction: 1,
-    bonusAvailable: true
-  },
   timerRemaining: TIMER_DURATION_SECONDS,
   timerIntervalId: null,
   timerLastTick: 0,
@@ -154,7 +140,12 @@ const gameState = {
   isDragging: false,
   dragOffsetX: 0,
   dragOffsetY: 0,
-  lastPointer: { x: 0, y: 0 }
+  lastPointer: { x: 0, y: 0 },
+  ambientParticles: [],
+  ambientFireflies: [],
+  ambientTime: 0,
+  animationFrameId: null,
+  lastAnimationTime: 0
 };
 
 window.addEventListener("load", initGame);
@@ -164,6 +155,7 @@ function initGame() {
   bindEvents();
   updateMobileLayout();
   loadAllImages();
+  startAnimationLoop();
 }
 
 function bindEvents() {
@@ -233,8 +225,8 @@ function handleEditorButtonAction(action) {
     case "newZone": createNewZoneAtCenter(); break;
     case "smaller": resizeSelectedItem(0.95); break;
     case "larger": resizeSelectedItem(1.05); break;
-    case "rotateLeft": rotateSelectedClue(-5); break;
-    case "rotateRight": rotateSelectedClue(5); break;
+    case "rotateLeft": rotateSelectedItem(-5); break;
+    case "rotateRight": rotateSelectedItem(5); break;
     case "opacityDown": adjustSelectedClueVisual("opacity", -0.05); break;
     case "opacityUp": adjustSelectedClueVisual("opacity", 0.05); break;
     case "saturationDown": adjustSelectedClueVisual("saturation", -0.1); break;
@@ -316,11 +308,11 @@ function handleKeyDown(event) {
       break;
     case "[":
       event.preventDefault();
-      rotateSelectedClue(-5);
+      rotateSelectedItem(-5);
       break;
     case "]":
       event.preventDefault();
-      rotateSelectedClue(5);
+      rotateSelectedItem(5);
       break;
     case "c":
       event.preventDefault();
@@ -574,19 +566,17 @@ function startLevel(levelIndex) {
   gameState.mode = "intro";
   gameState.foundClues = new Set();
   gameState.score = 0;
-  gameState.wrongClicks = 0;
   gameState.comboStreak = 0;
   gameState.lastFoundAt = 0;
   gameState.currentLevelTimeBonus = 0;
   gameState.currentLevelStars = 0;
   gameState.currentLevelScoreBanked = false;
   gameState.currentLevelCompletedClues = [];
-  gameState.wrongFlashUntil = 0;
   gameState.toastUntil = 0;
   gameState.toastText = "";
   gameState.toastKind = "";
   hideFoundEvidencePopup();
-  resetMouseDistraction();
+  resetAmbientEffects();
   resetLevelTimer();
   gameState.selectedClueId = null;
   gameState.selectedZoneId = null;
@@ -703,7 +693,6 @@ function restartGameFromBeginning() {
   gameState.foundLevelIds = new Set();
   gameState.totalRunScore = 0;
   gameState.score = 0;
-  gameState.wrongClicks = 0;
   gameState.comboStreak = 0;
   gameState.lastFoundAt = 0;
   startLevel(0);
@@ -742,15 +731,9 @@ function handleCanvasPointerDown(event) {
 
   if (gameState.mode !== "playing") return;
 
-  if (checkMouseClick(point.x, point.y)) {
-    updateUI();
-    render();
-    return;
-  }
 
   const clickedClue = findClickedRuntimeClue(point.x, point.y);
   if (clickedClue) collectClue(clickedClue);
-  else handleWrongClick();
   updateUI();
   render();
 }
@@ -843,7 +826,7 @@ function findClickedRuntimeClue(gameX, gameY) {
 function findClickedZone(gameX, gameY) {
   const zones = getCurrentLevel().placementZones || [];
   for (let i = zones.length - 1; i >= 0; i -= 1) {
-    if (isPointInsideRect(gameX, gameY, zones[i])) return zones[i];
+    if (isPointInsideRotatedRect(gameX, gameY, zones[i])) return zones[i];
   }
   return null;
 }
@@ -858,6 +841,31 @@ function clamp(value, min, max) {
 
 function roundToTwo(value) {
   return Math.round(Number(value) * 100) / 100;
+}
+
+function degreesToRadians(degrees) {
+  return (Number(degrees || 0) * Math.PI) / 180;
+}
+
+function getRotatedRectCenter(rect) {
+  return {
+    x: Number(rect.x) + Number(rect.width) / 2,
+    y: Number(rect.y) + Number(rect.height) / 2
+  };
+}
+
+function isPointInsideRotatedRect(x, y, rect) {
+  const rotation = Number(rect.rotation || 0);
+  if (!rotation) return isPointInsideRect(x, y, rect);
+
+  const center = getRotatedRectCenter(rect);
+  const cos = Math.cos(-degreesToRadians(rotation));
+  const sin = Math.sin(-degreesToRadians(rotation));
+  const dx = x - center.x;
+  const dy = y - center.y;
+  const localX = center.x + dx * cos - dy * sin;
+  const localY = center.y + dx * sin + dy * cos;
+  return isPointInsideRect(localX, localY, rect);
 }
 
 function collectClue(runtimeClue) {
@@ -909,13 +917,6 @@ function completeCurrentLevelSuccessfully() {
   window.setTimeout(() => playGameSound("levelComplete"), 120);
 }
 
-function handleWrongClick() {
-  gameState.wrongClicks += 1;
-  gameState.comboStreak = 0;
-  if (gameState.score > 0) gameState.score = Math.max(0, gameState.score - WRONG_CLICK_PENALTY);
-  flashWrongClick();
-  showFeedback(`Wrong click -${WRONG_CLICK_PENALTY}. Careful...`, "negative");
-}
 
 
 
@@ -962,15 +963,6 @@ function getClueConnectionText(clue) {
   return "Evidence logged";
 }
 
-function flashWrongClick() {
-  gameState.wrongFlashUntil = Date.now() + 280;
-  if (canvasFrame) {
-    canvasFrame.classList.remove("wrong-flash");
-    void canvasFrame.offsetWidth;
-    canvasFrame.classList.add("wrong-flash");
-    window.setTimeout(() => canvasFrame.classList.remove("wrong-flash"), 300);
-  }
-}
 
 function showFeedback(text, kind = "") {
   gameState.toastText = text;
@@ -992,19 +984,12 @@ function updateFeedbackToast() {
   if (gameState.toastKind) feedbackToast.classList.add(gameState.toastKind);
 }
 
-function updateWrongFlash() {
-  if (!canvasFrame) return;
-  if (gameState.wrongFlashUntil && Date.now() > gameState.wrongFlashUntil) {
-    canvasFrame.classList.remove("wrong-flash");
-    gameState.wrongFlashUntil = 0;
-  }
-}
 
 function calculateStars() {
   const remaining = Math.ceil(gameState.timerRemaining);
   let stars = 1;
-  if (gameState.wrongClicks <= 3 && remaining >= Math.ceil(getCurrentLevelTimerDuration() * 0.25)) stars = 2;
-  if (gameState.wrongClicks === 0 && remaining >= Math.ceil(getCurrentLevelTimerDuration() * 0.4)) stars = 3;
+  if (remaining >= Math.ceil(getCurrentLevelTimerDuration() * 0.25)) stars = 2;
+  if (remaining >= Math.ceil(getCurrentLevelTimerDuration() * 0.4)) stars = 3;
   return stars;
 }
 
@@ -1012,73 +997,6 @@ function getStarText(stars) {
   return "★".repeat(Math.max(1, stars)) + "☆".repeat(Math.max(0, 3 - stars));
 }
 
-function resetMouseDistraction() {
-  const yOptions = [560, 600, 635];
-  const direction = Math.random() > 0.5 ? 1 : -1;
-  gameState.mouse = {
-    active: true,
-    x: direction === 1 ? -70 : BASE_WIDTH + 70,
-    y: yOptions[Math.floor(Math.random() * yOptions.length)],
-    width: 42,
-    height: 18,
-    speed: 70 + Math.random() * 60,
-    direction,
-    lastUpdate: Date.now(),
-    bonusAvailable: true
-  };
-}
-
-function updateMouseDistraction() {
-  if (!gameState.mouse.active || gameState.mode !== "playing") return;
-  const now = Date.now();
-  const elapsed = Math.min(0.08, (now - (gameState.mouse.lastUpdate || now)) / 1000);
-  gameState.mouse.lastUpdate = now;
-  gameState.mouse.x += gameState.mouse.speed * gameState.mouse.direction * elapsed;
-  if ((gameState.mouse.direction === 1 && gameState.mouse.x > BASE_WIDTH + 80) ||
-      (gameState.mouse.direction === -1 && gameState.mouse.x < -100)) {
-    resetMouseDistraction();
-  }
-}
-
-function drawMouseDistraction() {
-  if (!gameState.mouse.active || gameState.mode !== "playing") return;
-  const mouse = gameState.mouse;
-  ctx.save();
-  ctx.translate(mouse.x, mouse.y);
-  if (mouse.direction < 0) ctx.scale(-1, 1);
-  ctx.fillStyle = "rgba(35, 25, 20, .72)";
-  ctx.beginPath();
-  ctx.ellipse(0, 0, mouse.width / 2, mouse.height / 2, 0, 0, Math.PI * 2);
-  ctx.fill();
-  ctx.fillStyle = "rgba(20, 14, 10, .9)";
-  ctx.beginPath();
-  ctx.arc(mouse.width / 2 - 4, -3, 4, 0, Math.PI * 2);
-  ctx.fill();
-  ctx.strokeStyle = "rgba(35, 25, 20, .7)";
-  ctx.lineWidth = 3;
-  ctx.beginPath();
-  ctx.moveTo(-mouse.width / 2, 0);
-  ctx.quadraticCurveTo(-mouse.width / 2 - 20, 6, -mouse.width / 2 - 32, -2);
-  ctx.stroke();
-  ctx.restore();
-}
-
-function checkMouseClick(x, y) {
-  const mouse = gameState.mouse;
-  if (!mouse.active || !mouse.bonusAvailable) return false;
-  const rect = {
-    x: mouse.x - mouse.width / 2 - 8,
-    y: mouse.y - mouse.height / 2 - 8,
-    width: mouse.width + 16,
-    height: mouse.height + 16
-  };
-  if (!isPointInsideRect(x, y, rect)) return false;
-  mouse.bonusAvailable = false;
-  mouse.active = false;
-  gameState.score += MOUSE_BONUS;
-  showFeedback(`Mouse spotted! Bonus +${MOUSE_BONUS}`, "positive");
-  return true;
-}
 
 function showRoomIntroOverlay() {
   const level = getCurrentLevel();
@@ -1182,9 +1100,8 @@ function isLevelComplete() {
 
 function updateUI() {
   const level = getCurrentLevel();
-  if (levelNameElement) levelNameElement.textContent = level.name;
+  if (levelNameElement) levelNameElement.textContent = String(level.name || "").toUpperCase();
   if (scoreValueElement) scoreValueElement.textContent = String(gameState.score);
-  if (wrongClickValueElement) wrongClickValueElement.textContent = String(gameState.wrongClicks);
   updateTimerUI();
   updateClueList();
 }
@@ -1414,10 +1331,26 @@ function resizeSelectedItem(factor) {
   render();
 }
 
+function rotateSelectedItem(deltaDegrees) {
+  if (gameState.editorTool === "zone") {
+    rotateSelectedZone(deltaDegrees);
+  } else {
+    rotateSelectedClue(deltaDegrees);
+  }
+}
+
 function rotateSelectedClue(deltaDegrees) {
   const clue = getSelectedRuntimeClue();
   if (!clue) return;
   clue.rotation = Math.round((clue.rotation || 0) + deltaDegrees);
+  updateEditorOverlay();
+  render();
+}
+
+function rotateSelectedZone(deltaDegrees) {
+  const zone = getSelectedZone();
+  if (!zone) return;
+  zone.rotation = Math.round((Number(zone.rotation || 0) + deltaDegrees) % 360);
   updateEditorOverlay();
   render();
 }
@@ -1454,7 +1387,8 @@ function createNewZone(x, y) {
     x: clamp(x, 0, BASE_WIDTH - 160),
     y: clamp(y, 0, BASE_HEIGHT - 70),
     width: 160,
-    height: 70
+    height: 70,
+    rotation: 0
   };
   level.placementZones.push(zone);
   gameState.selectedZoneId = zone.id;
@@ -1496,17 +1430,246 @@ function deleteSelectedZone() {
   render();
 }
 
+
+function startAnimationLoop() {
+  if (gameState.animationFrameId) return;
+  gameState.lastAnimationTime = performance.now();
+
+  const loop = (timestamp) => {
+    const elapsed = Math.min(0.08, (timestamp - gameState.lastAnimationTime) / 1000);
+    gameState.lastAnimationTime = timestamp;
+    updateAmbientEffects(elapsed);
+    render();
+    gameState.animationFrameId = window.requestAnimationFrame(loop);
+  };
+
+  gameState.animationFrameId = window.requestAnimationFrame(loop);
+}
+
+function getCurrentAmbientSettings() {
+  const level = getCurrentLevel();
+  if (level && level.ambient) return level.ambient;
+  return {
+    lights: [
+      {
+        id: "fallback_room_glow",
+        x: BASE_WIDTH / 2,
+        y: BASE_HEIGHT * 0.28,
+        radius: 380,
+        color: "rgba(255, 215, 140, 0.26)",
+        flickerAmount: 0.08,
+        speed: 1.4
+      }
+    ],
+    dust: {
+      enabled: true,
+      count: 56,
+      speed: 10,
+      opacity: 0.26,
+      drift: 14
+    }
+  };
+}
+
+function resetAmbientEffects() {
+  const ambient = getCurrentAmbientSettings();
+  const dust = ambient.dust || {};
+  const fireflies = ambient.fireflies || {};
+  gameState.ambientTime = Math.random() * 100;
+  gameState.ambientParticles = [];
+  gameState.ambientFireflies = [];
+
+  if (dust.enabled !== false) {
+    const mobileMultiplier = isMobileDevice() ? 0.75 : 1;
+    const count = Math.max(18, Math.round(Number(dust.count || 56) * mobileMultiplier));
+    for (let index = 0; index < count; index += 1) {
+      gameState.ambientParticles.push(createAmbientDustParticle(true));
+    }
+  }
+
+  if (fireflies.enabled === true) {
+    const mobileMultiplier = isMobileDevice() ? 0.6 : 1;
+    const count = Math.max(0, Math.round(Number(fireflies.count || 0) * mobileMultiplier));
+    for (let index = 0; index < count; index += 1) {
+      gameState.ambientFireflies.push(createAmbientFirefly(true));
+    }
+  }
+}
+
+function createAmbientDustParticle(randomY = false) {
+  const ambient = getCurrentAmbientSettings();
+  const dust = ambient.dust || {};
+  return {
+    x: Math.random() * BASE_WIDTH,
+    y: randomY ? Math.random() * BASE_HEIGHT : -20 - Math.random() * 80,
+    radius: 1.1 + Math.random() * 2.4,
+    speed: Number(dust.speed || 10) * (0.45 + Math.random() * 0.9),
+    drift: Number(dust.drift || 8) * (Math.random() > 0.5 ? 1 : -1) * (0.25 + Math.random()),
+    opacity: Number(dust.opacity || 0.26) * (0.75 + Math.random() * 0.85),
+    phase: Math.random() * Math.PI * 2
+  };
+}
+
+function createAmbientFirefly(randomPosition = false) {
+  return {
+    x: randomPosition ? Math.random() * BASE_WIDTH : -20,
+    y: 250 + Math.random() * 360,
+    speed: 8 + Math.random() * 24,
+    drift: -8 + Math.random() * 16,
+    radius: 1.4 + Math.random() * 2.2,
+    phase: Math.random() * Math.PI * 2,
+    opacity: 0.12 + Math.random() * 0.18
+  };
+}
+
+function updateAmbientEffects(deltaSeconds) {
+  if (!Number.isFinite(deltaSeconds) || deltaSeconds <= 0) return;
+  if (gameState.mode === "menu" || gameState.mode === "loading") return;
+
+  const editorMultiplier = gameState.editorMode ? 0.25 : 1;
+  gameState.ambientTime += deltaSeconds * editorMultiplier;
+
+  gameState.ambientParticles.forEach((particle, index) => {
+    particle.phase += deltaSeconds * 0.9;
+    particle.x += Math.sin(particle.phase) * particle.drift * deltaSeconds;
+    particle.y += particle.speed * deltaSeconds * editorMultiplier;
+
+    if (particle.y > BASE_HEIGHT + 30 || particle.x < -40 || particle.x > BASE_WIDTH + 40) {
+      gameState.ambientParticles[index] = createAmbientDustParticle(false);
+    }
+  });
+
+  gameState.ambientFireflies.forEach((firefly, index) => {
+    firefly.phase += deltaSeconds * 2.1;
+    firefly.x += firefly.speed * deltaSeconds * editorMultiplier;
+    firefly.y += Math.sin(firefly.phase) * firefly.drift * deltaSeconds;
+
+    if (firefly.x > BASE_WIDTH + 50 || firefly.y < 160 || firefly.y > BASE_HEIGHT + 40) {
+      gameState.ambientFireflies[index] = createAmbientFirefly(false);
+    }
+  });
+}
+
+function drawAmbientEffects() {
+  if (gameState.mode === "menu" || gameState.mode === "loading") return;
+  const ambient = getCurrentAmbientSettings();
+
+  drawAmbientLights(ambient.lights || []);
+  drawAmbientDust();
+  drawAmbientFireflies(ambient.fireflies || {});
+}
+
+function drawAmbientLights(lights) {
+  if (!Array.isArray(lights) || lights.length === 0) return;
+
+  ctx.save();
+  ctx.globalCompositeOperation = "screen";
+
+  lights.slice(0, 3).forEach((light, index) => {
+    const baseAlpha = getAlphaFromRgba(light.color, 0.18);
+    const flicker = Math.sin(gameState.ambientTime * Number(light.speed || 1) + index * 2.13);
+    const twitch = Math.sin(gameState.ambientTime * Number(light.speed || 1) * 4.7 + index);
+    const flickerAmount = Number(light.flickerAmount || 0.05);
+    const alpha = clamp(baseAlpha + (flicker * flickerAmount) + (twitch * flickerAmount * 0.35), 0.02, 0.34);
+    const colour = replaceRgbaAlpha(light.color || "rgba(255,205,120,0.18)", alpha);
+    const gradient = ctx.createRadialGradient(light.x, light.y, 0, light.x, light.y, Number(light.radius || 180));
+    gradient.addColorStop(0, colour);
+    gradient.addColorStop(0.45, replaceRgbaAlpha(light.color || "rgba(255,205,120,0.18)", alpha * 0.42));
+    gradient.addColorStop(1, "rgba(255,255,255,0)");
+    ctx.fillStyle = gradient;
+    ctx.beginPath();
+    ctx.arc(light.x, light.y, Number(light.radius || 180), 0, Math.PI * 2);
+    ctx.fill();
+  });
+
+  ctx.restore();
+}
+
+function drawAmbientDust() {
+  if (!Array.isArray(gameState.ambientParticles) || gameState.ambientParticles.length === 0) return;
+
+  ctx.save();
+  ctx.globalCompositeOperation = "screen";
+  gameState.ambientParticles.forEach((particle) => {
+    const shimmer = 0.55 + Math.sin(gameState.ambientTime * 1.4 + particle.phase) * 0.25;
+    ctx.globalAlpha = clamp(particle.opacity * shimmer, 0.045, 0.46);
+    ctx.fillStyle = "rgba(245,230,190,1)";
+    ctx.beginPath();
+    ctx.arc(particle.x, particle.y, particle.radius, 0, Math.PI * 2);
+    ctx.fill();
+  });
+  ctx.restore();
+}
+
+
+function drawForegroundDust() {
+  if (!Array.isArray(gameState.ambientParticles) || gameState.ambientParticles.length === 0) return;
+  ctx.save();
+  ctx.globalCompositeOperation = "screen";
+  const step = isMobileDevice() ? 4 : 3;
+  for (let index = 0; index < gameState.ambientParticles.length; index += step) {
+    const particle = gameState.ambientParticles[index];
+    const shimmer = 0.45 + Math.sin(gameState.ambientTime * 1.1 + particle.phase) * 0.2;
+    ctx.globalAlpha = clamp(particle.opacity * shimmer * 0.75, 0.025, 0.22);
+    ctx.fillStyle = "rgba(255,245,210,1)";
+    ctx.beginPath();
+    ctx.arc(particle.x, particle.y, Math.max(0.8, particle.radius * 0.75), 0, Math.PI * 2);
+    ctx.fill();
+  }
+  ctx.restore();
+}
+
+function drawAmbientFireflies(fireflySettings) {
+  if (!Array.isArray(gameState.ambientFireflies) || gameState.ambientFireflies.length === 0) return;
+
+  ctx.save();
+  ctx.globalCompositeOperation = "screen";
+  gameState.ambientFireflies.forEach((firefly) => {
+    const pulse = 0.45 + Math.sin(gameState.ambientTime * 3 + firefly.phase) * 0.35;
+    ctx.globalAlpha = clamp((Number(fireflySettings.opacity || firefly.opacity) || 0.2) * pulse, 0.03, 0.28);
+    const gradient = ctx.createRadialGradient(firefly.x, firefly.y, 0, firefly.x, firefly.y, firefly.radius * 6);
+    gradient.addColorStop(0, "rgba(255,235,120,1)");
+    gradient.addColorStop(0.35, "rgba(255,210,80,.55)");
+    gradient.addColorStop(1, "rgba(255,255,255,0)");
+    ctx.fillStyle = gradient;
+    ctx.beginPath();
+    ctx.arc(firefly.x, firefly.y, firefly.radius * 6, 0, Math.PI * 2);
+    ctx.fill();
+  });
+  ctx.restore();
+}
+
+function getAlphaFromRgba(value, fallback = 0.18) {
+  const match = String(value || "").match(/rgba?\(([^)]+)\)/i);
+  if (!match) return fallback;
+  const parts = match[1].split(",").map((part) => part.trim());
+  if (parts.length < 4) return fallback;
+  const alpha = Number(parts[3]);
+  return Number.isFinite(alpha) ? alpha : fallback;
+}
+
+function replaceRgbaAlpha(value, alpha) {
+  const text = String(value || "rgba(255,205,120,0.18)");
+  const match = text.match(/rgba?\(([^)]+)\)/i);
+  if (!match) return `rgba(255,205,120,${alpha})`;
+  const parts = match[1].split(",").map((part) => part.trim());
+  const r = parts[0] || "255";
+  const g = parts[1] || "205";
+  const b = parts[2] || "120";
+  return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+}
+
+
 function render() {
   clearCanvas();
   drawRoomBackground();
-  updateMouseDistraction();
-  drawMouseDistraction();
+  drawAmbientEffects();
   drawClues();
+  drawForegroundDust();
   if (gameState.debugZones || gameState.editorTool === "zone") drawDebugPlacementZones();
   if (gameState.debugHitboxes || gameState.editorMode) drawDebugHitboxes();
   if (gameState.editorMode) drawEditorSelection();
   updateFeedbackToast();
-  updateWrongFlash();
   drawStatusText();
 }
 
@@ -1602,16 +1765,23 @@ function drawDebugPlacementZones() {
   ctx.save();
   zones.forEach((zone) => {
     const selected = zone.id === gameState.selectedZoneId;
+    const center = getRotatedRectCenter(zone);
+
+    ctx.save();
+    ctx.translate(center.x, center.y);
+    ctx.rotate(degreesToRadians(zone.rotation || 0));
     ctx.fillStyle = getZoneFillColour(zone.type, selected);
     ctx.strokeStyle = getZoneStrokeColour(zone.type, selected);
     ctx.lineWidth = selected ? 4 : 2;
-    ctx.fillRect(zone.x, zone.y, zone.width, zone.height);
-    ctx.strokeRect(zone.x, zone.y, zone.width, zone.height);
+    ctx.fillRect(-zone.width / 2, -zone.height / 2, zone.width, zone.height);
+    ctx.strokeRect(-zone.width / 2, -zone.height / 2, zone.width, zone.height);
+    ctx.restore();
+
     ctx.fillStyle = "#ffffff";
     ctx.font = selected ? "bold 16px Arial, sans-serif" : "14px Arial, sans-serif";
     ctx.textAlign = "left";
     ctx.textBaseline = "top";
-    ctx.fillText(`${zone.type}: ${zone.label}`, zone.x + 6, zone.y + 6);
+    ctx.fillText(`${zone.type}: ${zone.label} r:${Math.round(zone.rotation || 0)}`, zone.x + 6, zone.y + 6);
   });
   ctx.restore();
 }
@@ -1634,7 +1804,7 @@ function drawEditorSelection() {
     ctx.fillStyle = "rgba(0,0,0,.72)";
     ctx.fillRect(zone.x, Math.max(0, zone.y - 42), 420, 38);
     ctx.fillStyle = "#ffe650";
-    ctx.fillText(`${zone.id}  type:${zone.type} x:${zone.x} y:${zone.y} w:${zone.width} h:${zone.height}`, zone.x + 8, Math.max(0, zone.y - 34));
+    ctx.fillText(`${zone.id}  type:${zone.type} x:${zone.x} y:${zone.y} w:${zone.width} h:${zone.height} r:${Math.round(zone.rotation || 0)}`, zone.x + 8, Math.max(0, zone.y - 34));
   }
 
   ctx.restore();
@@ -1692,7 +1862,7 @@ function updateEditorOverlay() {
     }
   } else {
     const zone = getSelectedZone();
-    if (zone) detail = ` · ${zone.width}×${zone.height}`;
+    if (zone) detail = ` · ${zone.width}×${zone.height} · r ${Math.round(zone.rotation || 0)}`;
   }
   editorModeLabel.textContent = `EDITOR: ${gameState.editorTool.toUpperCase()}${selected ? ` · ${selected}` : ""}${detail}`;
 }
@@ -1764,7 +1934,6 @@ function buildLevelReportHtml(level) {
   return `
     <div class="result-summary">
       <div class="result-pill"><span>Rating</span><strong>${getStarText(gameState.currentLevelStars)}</strong></div>
-      <div class="result-pill"><span>Wrong</span><strong>${gameState.wrongClicks}</strong></div>
       <div class="result-pill"><span>Score</span><strong>${gameState.score}</strong></div>
     </div>
     <strong>Evidence report:</strong>
@@ -1810,7 +1979,6 @@ function showTimeUpOverlay() {
     levelReport.innerHTML = `
       <div class="result-summary">
         <div class="result-pill"><span>Found</span><strong>${gameState.foundClues.size}/${getCurrentLevel().clues.length}</strong></div>
-        <div class="result-pill"><span>Wrong</span><strong>${gameState.wrongClicks}</strong></div>
         <div class="result-pill"><span>Score</span><strong>${gameState.score}</strong></div>
       </div>
       <strong>Missing evidence:</strong>

@@ -2,11 +2,11 @@
   TIKUS: Hidden Evidence
   data.js
 
-  Character speech-bubble intro build.
-  - Levels 1-3 use default 25 second timer
-  - Levels 4-6 use 20 second timer
-  - +3 seconds per clue found remains active
-  - End-of-level time bonus scoring removed
+  Current user data updated:
+  - mouse feature removed
+  - wrong-click feature removed
+  - stronger ambient lights and dust on all levels
+  - placement zones support rotation in editor mode
 */
 
 const GAME_DATA = {
@@ -16,10 +16,8 @@ const GAME_DATA = {
     "baseHeight": 720,
     "clueScale": 0.8,
     "randomizeClueLocations": false,
-    "mouseBonus": 25,
     "comboWindowSeconds": 4,
     "comboBonusStep": 25,
-    "wrongClickPenalty": 10,
     "timerDurationSeconds": 25,
     "clueTimeBonusSeconds": 3
   },
@@ -31,49 +29,14 @@ const GAME_DATA = {
       "introText": "The family room is staged for polite conversation, but the evidence suggests someone rehearsed a lie in plain sight.",
       "placementZones": [
         {
-          "id": "sitting_sofa_left",
-          "label": "Left sofa and rug",
-          "type": "sofa",
-          "x": 120,
-          "y": 430,
-          "width": 300,
-          "height": 135
-        },
-        {
-          "id": "sitting_coffee_table",
-          "label": "Coffee table",
-          "type": "table",
-          "x": 465,
-          "y": 430,
-          "width": 300,
-          "height": 100
-        },
-        {
-          "id": "sitting_sideboard",
-          "label": "Sideboard and cabinet",
-          "type": "table",
-          "x": 810,
-          "y": 320,
-          "width": 315,
-          "height": 115
-        },
-        {
           "id": "sitting_floor_front",
           "label": "Front rug floor",
           "type": "floor",
-          "x": 250,
-          "y": 575,
-          "width": 760,
-          "height": 100
-        },
-        {
-          "id": "sitting_wall_picture",
-          "label": "Back wall display",
-          "type": "wall",
-          "x": 520,
-          "y": 120,
-          "width": 260,
-          "height": 165
+          "x": 389,
+          "y": 244,
+          "width": 536,
+          "height": 262,
+          "rotation": 0
         }
       ],
       "clues": [
@@ -86,13 +49,16 @@ const GAME_DATA = {
             "table",
             "counter"
           ],
-          "x": 666,
-          "y": 467,
+          "x": 631,
+          "y": 369,
           "width": 60,
           "height": 51,
           "rotation": 0,
           "description": "A formal family photograph hints at old resentment beneath the retreat's polished image.",
-          "suspectTag": "Family pressure"
+          "suspectTag": "Family pressure",
+          "opacity": 1,
+          "saturation": 1,
+          "brightness": 1
         },
         {
           "id": "cluedo_board_game",
@@ -109,7 +75,10 @@ const GAME_DATA = {
           "height": 63,
           "rotation": 0,
           "description": "The board game feels like a cruel private joke beside a real investigation.",
-          "suspectTag": "Dark joke / staged game"
+          "suspectTag": "Dark joke / staged game",
+          "opacity": 1,
+          "saturation": 1,
+          "brightness": 1
         },
         {
           "id": "chess_board_midgame",
@@ -125,7 +94,10 @@ const GAME_DATA = {
           "height": 43,
           "rotation": 10,
           "description": "A frozen chess position suggests strategy, patience, and someone thinking several moves ahead.",
-          "suspectTag": "Calculated planning"
+          "suspectTag": "Calculated planning",
+          "opacity": 1,
+          "saturation": 1,
+          "brightness": 1
         },
         {
           "id": "silver_serving_tray",
@@ -142,7 +114,10 @@ const GAME_DATA = {
           "height": 58,
           "rotation": 0,
           "description": "The tray connects the sitting room to food, drink, and staff movement.",
-          "suspectTag": "Service route"
+          "suspectTag": "Service route",
+          "opacity": 1,
+          "saturation": 1,
+          "brightness": 1
         },
         {
           "id": "private_lounge_matchbox",
@@ -154,13 +129,16 @@ const GAME_DATA = {
             "sofa",
             "floor"
           ],
-          "x": 943,
-          "y": 681,
-          "width": 55,
-          "height": 35,
+          "x": 910,
+          "y": 636,
+          "width": 66,
+          "height": 43,
           "rotation": -15,
           "description": "A matchbox from a private lounge points to an off-record conversation.",
-          "suspectTag": "Private meeting"
+          "suspectTag": "Private meeting",
+          "opacity": 1,
+          "saturation": 1,
+          "brightness": 1
         },
         {
           "id": "lipstick_crystal_glass",
@@ -171,18 +149,50 @@ const GAME_DATA = {
             "table",
             "counter"
           ],
-          "x": 551,
-          "y": 100,
-          "width": 26,
-          "height": 35,
+          "x": 569,
+          "y": 30,
+          "width": 33,
+          "height": 45,
           "rotation": 0,
           "description": "Lipstick on crystal suggests someone stayed for a drink longer than they admitted.",
-          "suspectTag": "Social guest"
+          "suspectTag": "Social guest",
+          "opacity": 1,
+          "saturation": 1,
+          "brightness": 1
         }
       ],
       "introCharacterImage": "assets/characters/character_banana_man.png",
       "introCharacterName": "The Nervous Guest",
-      "introCharacterLine": "This room is too neat. Someone cleaned the truth before we arrived."
+      "introCharacterLine": "This room is too neat. Someone cleaned the truth before we arrived.",
+      "ambient": {
+        "lights": [
+          {
+            "id": "sitting_left_lamp",
+            "x": 260,
+            "y": 145,
+            "radius": 310,
+            "color": "rgba(255,205,120,0.30)",
+            "flickerAmount": 0.1,
+            "speed": 1.5
+          },
+          {
+            "id": "sitting_right_lamp",
+            "x": 930,
+            "y": 135,
+            "radius": 310,
+            "color": "rgba(255,205,120,0.27)",
+            "flickerAmount": 0.11,
+            "speed": 1.9
+          }
+        ],
+        "dust": {
+          "enabled": true,
+          "count": 70,
+          "speed": 15,
+          "opacity": 0.34,
+          "drift": 16
+        }
+      }
     },
     {
       "id": "dining_room",
@@ -197,7 +207,8 @@ const GAME_DATA = {
           "x": 330,
           "y": 300,
           "width": 580,
-          "height": 180
+          "height": 180,
+          "rotation": 0
         },
         {
           "id": "dining_sideboard",
@@ -206,7 +217,8 @@ const GAME_DATA = {
           "x": 860,
           "y": 300,
           "width": 260,
-          "height": 110
+          "height": 110,
+          "rotation": 0
         },
         {
           "id": "dining_floor_left",
@@ -215,7 +227,8 @@ const GAME_DATA = {
           "x": 95,
           "y": 480,
           "width": 260,
-          "height": 120
+          "height": 120,
+          "rotation": 0
         },
         {
           "id": "dining_floor_front",
@@ -224,7 +237,8 @@ const GAME_DATA = {
           "x": 420,
           "y": 590,
           "width": 600,
-          "height": 95
+          "height": 95,
+          "rotation": 0
         },
         {
           "id": "dining_chair_zone",
@@ -233,7 +247,8 @@ const GAME_DATA = {
           "x": 210,
           "y": 320,
           "width": 170,
-          "height": 160
+          "height": 160,
+          "rotation": 0
         }
       ],
       "clues": [
@@ -342,7 +357,36 @@ const GAME_DATA = {
       ],
       "introCharacterImage": "assets/characters/character_kebaya_woman.png",
       "introCharacterName": "The Watchful Host",
-      "introCharacterLine": "Dinner tells you everything. Who sat where. Who reached for what. Who lied."
+      "introCharacterLine": "Dinner tells you everything. Who sat where. Who reached for what. Who lied.",
+      "ambient": {
+        "lights": [
+          {
+            "id": "dining_chandelier",
+            "x": 640,
+            "y": 155,
+            "radius": 360,
+            "color": "rgba(255,215,140,0.32)",
+            "flickerAmount": 0.08,
+            "speed": 1.4
+          },
+          {
+            "id": "dining_table_candles",
+            "x": 620,
+            "y": 360,
+            "radius": 240,
+            "color": "rgba(255,175,80,0.24)",
+            "flickerAmount": 0.14,
+            "speed": 2.6
+          }
+        ],
+        "dust": {
+          "enabled": true,
+          "count": 60,
+          "speed": 12,
+          "opacity": 0.3,
+          "drift": 14
+        }
+      }
     },
     {
       "id": "orchid_room",
@@ -357,7 +401,8 @@ const GAME_DATA = {
           "x": 650,
           "y": 360,
           "width": 350,
-          "height": 125
+          "height": 125,
+          "rotation": 0
         },
         {
           "id": "orchid_floor_left",
@@ -366,7 +411,8 @@ const GAME_DATA = {
           "x": 110,
           "y": 515,
           "width": 330,
-          "height": 115
+          "height": 115,
+          "rotation": 0
         },
         {
           "id": "orchid_floor_right",
@@ -375,7 +421,8 @@ const GAME_DATA = {
           "x": 760,
           "y": 545,
           "width": 360,
-          "height": 110
+          "height": 110,
+          "rotation": 0
         },
         {
           "id": "orchid_plant_shelf",
@@ -384,7 +431,8 @@ const GAME_DATA = {
           "x": 240,
           "y": 260,
           "width": 340,
-          "height": 115
+          "height": 115,
+          "rotation": 0
         },
         {
           "id": "orchid_wall_labels",
@@ -393,7 +441,8 @@ const GAME_DATA = {
           "x": 810,
           "y": 205,
           "width": 250,
-          "height": 130
+          "height": 130,
+          "rotation": 0
         }
       ],
       "clues": [
@@ -504,7 +553,36 @@ const GAME_DATA = {
       ],
       "introCharacterImage": "assets/characters/character_banana_man.png",
       "introCharacterName": "The Nervous Guest",
-      "introCharacterLine": "The orchids are quiet, but something moved through here in a hurry."
+      "introCharacterLine": "The orchids are quiet, but something moved through here in a hurry.",
+      "ambient": {
+        "lights": [
+          {
+            "id": "orchid_greenhouse_light",
+            "x": 720,
+            "y": 170,
+            "radius": 390,
+            "color": "rgba(215,245,185,0.25)",
+            "flickerAmount": 0.06,
+            "speed": 1.0
+          },
+          {
+            "id": "orchid_floor_glow",
+            "x": 525,
+            "y": 535,
+            "radius": 300,
+            "color": "rgba(245,225,150,0.17)",
+            "flickerAmount": 0.04,
+            "speed": 0.8
+          }
+        ],
+        "dust": {
+          "enabled": true,
+          "count": 76,
+          "speed": 9,
+          "opacity": 0.3,
+          "drift": 22
+        }
+      }
     },
     {
       "id": "orchid_ensuite",
@@ -519,7 +597,8 @@ const GAME_DATA = {
           "x": 680,
           "y": 350,
           "width": 320,
-          "height": 105
+          "height": 105,
+          "rotation": 0
         },
         {
           "id": "ensuite_cabinet",
@@ -528,7 +607,8 @@ const GAME_DATA = {
           "x": 725,
           "y": 175,
           "width": 230,
-          "height": 150
+          "height": 150,
+          "rotation": 0
         },
         {
           "id": "ensuite_towel_area",
@@ -537,7 +617,8 @@ const GAME_DATA = {
           "x": 190,
           "y": 330,
           "width": 270,
-          "height": 120
+          "height": 120,
+          "rotation": 0
         },
         {
           "id": "ensuite_floor",
@@ -546,7 +627,8 @@ const GAME_DATA = {
           "x": 330,
           "y": 550,
           "width": 620,
-          "height": 120
+          "height": 120,
+          "rotation": 0
         },
         {
           "id": "ensuite_shower_edge",
@@ -555,7 +637,8 @@ const GAME_DATA = {
           "x": 870,
           "y": 465,
           "width": 260,
-          "height": 115
+          "height": 115,
+          "rotation": 0
         }
       ],
       "clues": [
@@ -666,7 +749,36 @@ const GAME_DATA = {
       "introCharacterImage": "assets/characters/character_kebaya_woman.png",
       "introCharacterName": "The Watchful Host",
       "introCharacterLine": "Someone came here to wash something away. Find what they missed.",
-      "timerDurationSeconds": 20
+      "timerDurationSeconds": 20,
+      "ambient": {
+        "lights": [
+          {
+            "id": "ensuite_vanity_light",
+            "x": 820,
+            "y": 170,
+            "radius": 350,
+            "color": "rgba(230,245,255,0.28)",
+            "flickerAmount": 0.09,
+            "speed": 1.8
+          },
+          {
+            "id": "ensuite_floor_reflection",
+            "x": 640,
+            "y": 575,
+            "radius": 300,
+            "color": "rgba(220,235,255,0.16)",
+            "flickerAmount": 0.04,
+            "speed": 1.0
+          }
+        ],
+        "dust": {
+          "enabled": true,
+          "count": 52,
+          "speed": 8,
+          "opacity": 0.24,
+          "drift": 12
+        }
+      }
     },
     {
       "id": "kitchen",
@@ -681,7 +793,8 @@ const GAME_DATA = {
           "x": 160,
           "y": 345,
           "width": 340,
-          "height": 115
+          "height": 115,
+          "rotation": 0
         },
         {
           "id": "kitchen_counter_right",
@@ -690,7 +803,8 @@ const GAME_DATA = {
           "x": 720,
           "y": 335,
           "width": 360,
-          "height": 120
+          "height": 120,
+          "rotation": 0
         },
         {
           "id": "kitchen_table",
@@ -699,7 +813,8 @@ const GAME_DATA = {
           "x": 430,
           "y": 465,
           "width": 330,
-          "height": 145
+          "height": 145,
+          "rotation": 0
         },
         {
           "id": "kitchen_floor",
@@ -708,7 +823,8 @@ const GAME_DATA = {
           "x": 250,
           "y": 600,
           "width": 760,
-          "height": 90
+          "height": 90,
+          "rotation": 0
         },
         {
           "id": "kitchen_shelf",
@@ -717,7 +833,8 @@ const GAME_DATA = {
           "x": 510,
           "y": 210,
           "width": 330,
-          "height": 110
+          "height": 110,
+          "rotation": 0
         }
       ],
       "clues": [
@@ -829,7 +946,36 @@ const GAME_DATA = {
       "introCharacterImage": "assets/characters/character_banana_man.png",
       "introCharacterName": "The Nervous Guest",
       "introCharacterLine": "Everything passes through the kitchen eventually. Food, gossip, poison.",
-      "timerDurationSeconds": 20
+      "timerDurationSeconds": 20,
+      "ambient": {
+        "lights": [
+          {
+            "id": "kitchen_fluorescent",
+            "x": 645,
+            "y": 115,
+            "radius": 430,
+            "color": "rgba(220,245,255,0.30)",
+            "flickerAmount": 0.18,
+            "speed": 3.8
+          },
+          {
+            "id": "kitchen_counter_glow",
+            "x": 720,
+            "y": 380,
+            "radius": 280,
+            "color": "rgba(255,230,170,0.16)",
+            "flickerAmount": 0.05,
+            "speed": 1.2
+          }
+        ],
+        "dust": {
+          "enabled": true,
+          "count": 60,
+          "speed": 13,
+          "opacity": 0.28,
+          "drift": 14
+        }
+      }
     },
     {
       "id": "garden",
@@ -844,7 +990,8 @@ const GAME_DATA = {
           "x": 90,
           "y": 535,
           "width": 360,
-          "height": 115
+          "height": 115,
+          "rotation": 0
         },
         {
           "id": "garden_path_right",
@@ -853,7 +1000,8 @@ const GAME_DATA = {
           "x": 720,
           "y": 545,
           "width": 420,
-          "height": 120
+          "height": 120,
+          "rotation": 0
         },
         {
           "id": "garden_bench",
@@ -862,7 +1010,8 @@ const GAME_DATA = {
           "x": 470,
           "y": 385,
           "width": 310,
-          "height": 120
+          "height": 120,
+          "rotation": 0
         },
         {
           "id": "garden_potting_table",
@@ -871,7 +1020,8 @@ const GAME_DATA = {
           "x": 835,
           "y": 330,
           "width": 280,
-          "height": 125
+          "height": 125,
+          "rotation": 0
         },
         {
           "id": "garden_bushes",
@@ -880,7 +1030,8 @@ const GAME_DATA = {
           "x": 170,
           "y": 345,
           "width": 310,
-          "height": 145
+          "height": 145,
+          "rotation": 0
         },
         {
           "id": "garden_wall",
@@ -889,7 +1040,8 @@ const GAME_DATA = {
           "x": 540,
           "y": 175,
           "width": 300,
-          "height": 135
+          "height": 135,
+          "rotation": 0
         }
       ],
       "clues": [
@@ -998,7 +1150,41 @@ const GAME_DATA = {
       "introCharacterImage": "assets/characters/character_kebaya_woman.png",
       "introCharacterName": "The Watchful Host",
       "introCharacterLine": "Outside is where people go when they do not want to be seen.",
-      "timerDurationSeconds": 20
+      "timerDurationSeconds": 20,
+      "ambient": {
+        "lights": [
+          {
+            "id": "garden_porch_lamp",
+            "x": 960,
+            "y": 170,
+            "radius": 350,
+            "color": "rgba(255,190,95,0.28)",
+            "flickerAmount": 0.11,
+            "speed": 1.9
+          },
+          {
+            "id": "garden_moon_haze",
+            "x": 440,
+            "y": 180,
+            "radius": 460,
+            "color": "rgba(180,210,255,0.13)",
+            "flickerAmount": 0.03,
+            "speed": 0.7
+          }
+        ],
+        "dust": {
+          "enabled": true,
+          "count": 66,
+          "speed": 6,
+          "opacity": 0.25,
+          "drift": 26
+        },
+        "fireflies": {
+          "enabled": true,
+          "count": 12,
+          "opacity": 0.28
+        }
+      }
     }
   ]
 };

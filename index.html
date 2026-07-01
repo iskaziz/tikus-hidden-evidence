@@ -19,6 +19,18 @@
           <div class="stat-pill"><span>Score</span><strong id="scoreValue">0</strong></div>
         </div>
 
+        <button id="rotateLandscapeButton" class="rotate-landscape-button hidden" type="button">Rotate Horizontal</button>
+
+        <div id="characterPanel" class="character-panel hidden" aria-hidden="true">
+          <img id="characterImage" class="character-image" src="" alt="" />
+          <div class="character-speech">
+            <strong id="characterName"></strong>
+            <span id="characterLine"></span>
+            <button id="levelIntroStartButton" class="speech-start-button hidden" type="button">Start Search</button>
+          </div>
+        </div>
+
+        <div id="levelIntroOverlay" class="level-intro-overlay hidden" aria-hidden="true"></div>
 
         <div id="mainMenuOverlay" class="screen-overlay">
           <div class="message-card">
@@ -43,8 +55,15 @@
 
         <div id="editorHelpOverlay" class="editor-help-overlay hidden">
           <strong id="editorModeLabel">EDITOR: CLUES</strong>
-          <span>Drag clues to move them.</span>
-          <span>Arrow keys nudge · Shift+Arrows x10 · - / = resize · [ / ] rotate</span>
+          <span>Drag zones to move them. Drag a selected zone corner to resize.</span>
+          <div class="editor-tool-row">
+            <button id="addZoneButton" type="button">Add Zone</button>
+            <button id="deleteZoneButton" type="button">Delete Zone</button>
+            <button id="resizeZoneButton" type="button">Resize Zone</button>
+            <button id="characterShrinkButton" type="button">Character −</button>
+            <button id="characterGrowButton" type="button">Character +</button>
+          </div>
+          <span>Arrow keys nudge · Shift+Arrows x10 · - / = resize · [ / ] rotate · Delete removes zone</span>
           <span>C copy selected · X export data.js · E exit editor/export · Esc deselect</span>
         </div>
 
@@ -88,15 +107,6 @@
         </div>
       </div>
 
-      <div id="characterPanel" class="character-panel hidden" aria-hidden="true">
-        <img id="characterImage" class="character-image" src="" alt="" />
-        <div class="character-speech">
-          <strong id="characterName"></strong>
-          <span id="characterLine"></span>
-          <button id="levelStartButton" class="speech-start-button" type="button">Start</button>
-        </div>
-      </div>
-
       <footer class="clue-footer" aria-label="Clues to find">
         <div class="clue-footer-title">Find</div>
         <ul id="clueList" class="clue-footer-list"></ul>
@@ -104,15 +114,6 @@
       </footer>
     </section>
   </main>
-
-
-  <div id="rotateDeviceOverlay" class="rotate-device-overlay" aria-hidden="true">
-    <div class="rotate-device-card">
-      <div class="rotate-device-icon" aria-hidden="true">↻</div>
-      <strong>Rotate Your Device</strong>
-      <span>TIKUS is best played in landscape mode.</span>
-    </div>
-  </div>
 
   <script src="data.js"></script>
   <script src="game.js"></script>

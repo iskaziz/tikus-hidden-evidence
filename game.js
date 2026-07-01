@@ -33,7 +33,6 @@ const completeTitle = document.getElementById("completeTitle");
 const completeMessage = document.getElementById("completeMessage");
 const levelReport = document.getElementById("levelReport");
 const startGameButton = document.getElementById("startGameButton");
-const levelStartButton = document.getElementById("levelStartButton");
 const restartButton = document.getElementById("restartButton");
 const nextLevelButton = document.getElementById("nextLevelButton");
 const feiskLogoButton = document.getElementById("feiskLogoButton");
@@ -41,6 +40,9 @@ const characterPanel = document.getElementById("characterPanel");
 const characterImage = document.getElementById("characterImage");
 const characterName = document.getElementById("characterName");
 const characterLine = document.getElementById("characterLine");
+const levelIntroOverlay = document.getElementById("levelIntroOverlay");
+const levelIntroStartButton = document.getElementById("levelIntroStartButton");
+const rotateLandscapeButton = document.getElementById("rotateLandscapeButton");
 const editorHelpOverlay = document.getElementById("editorHelpOverlay");
 const editorModeLabel = document.getElementById("editorModeLabel");
 const editorKeypadModal = document.getElementById("editorKeypadModal");
@@ -55,6 +57,11 @@ const exportStatus = document.getElementById("exportStatus");
 const copyExportButton = document.getElementById("copyExportButton");
 const downloadDataButton = document.getElementById("downloadDataButton");
 const closeExportButton = document.getElementById("closeExportButton");
+const addZoneButton = document.getElementById("addZoneButton");
+const deleteZoneButton = document.getElementById("deleteZoneButton");
+const resizeZoneButton = document.getElementById("resizeZoneButton");
+const characterShrinkButton = document.getElementById("characterShrinkButton");
+const characterGrowButton = document.getElementById("characterGrowButton");
 
 const BASE_WIDTH = GAME_DATA.settings.baseWidth;
 const BASE_HEIGHT = GAME_DATA.settings.baseHeight;
@@ -90,6 +97,8 @@ const state = {
   dragging: false,
   dragOffsetX: 0,
   dragOffsetY: 0,
+  resizeDragging: false,
+  resizeStart: null,
   lastPointer: { x: 0, y: 0 },
   editorUnlocked: false,
   editorMode: false,
@@ -114,7 +123,10 @@ function init() {
 
 function bindEvents() {
   startGameButton.addEventListener("click", startGame);
-  levelStartButton.addEventListener("click", beginLevelPlay);
+  levelIntroStartButton.addEventListener("click", beginLevelSearch);
+  rotateLandscapeButton.addEventListener("click", forceLandscapeMode);
+  window.addEventListener("resize", updateRotateButton);
+  window.addEventListener("orientationchange", updateRotateButton);
   restartButton.addEventListener("click", () => startLevel(state.levelIndex));
   nextLevelButton.addEventListener("click", nextLevel);
   canvas.addEventListener("pointerdown", handlePointerDown);
@@ -142,6 +154,12 @@ function bindEvents() {
   closeExportButton.addEventListener("click", closeExportPanel);
   copyExportButton.addEventListener("click", copyExport);
   downloadDataButton.addEventListener("click", () => downloadTextFile("data.js", buildDataJsExport()));
+  addZoneButton.addEventListener("click", addEditorZone);
+  deleteZoneButton.addEventListener("click", deleteSelectedZone);
+  resizeZoneButton.addEventListener("click", () => resizeSelectedClue(1.15));
+  characterShrinkButton.addEventListener("click", () => resizeCurrentCharacter(0.92));
+  characterGrowButton.addEventListener("click", () => resizeCurrentCharacter(1.08));
+  updateRotateButton();
 }
 
 function loadSounds() {
@@ -183,10 +201,10 @@ function playSound(name) {
 function loadImages() {
   const paths = new Set();
   editorData.levels.forEach((level) => {
-    paths.add(level.roomImage);
-    level.clues.forEach((clue) => paths.add(clue.image));
+    if (level.roomImage) paths.add(level.roomImage);
+    level.clues.forEach((clue) => { if (clue.image) paths.add(clue.image); });
   });
-  editorData.characters.forEach((character) => paths.add(character.image));
+  editorData.characters.forEach((character) => { if (character.image) paths.add(character.image); });
 
   let loaded = 0;
   const list = Array.from(paths);
@@ -218,23 +236,16 @@ function startLevel(index) {
   state.foundClues = new Set();
   state.selectedClueId = null;
   state.dragging = false;
+  state.resizeDragging = false;
+  state.resizeStart = null;
   state.timerRemaining = TIMER_DURATION_SECONDS;
   state.lastTimerTick = 0;
   state.runtimeClues = getLevel().clues.map((clue) => ({ ...deepClone(clue), hitbox: { x: clue.x, y: clue.y, width: clue.width, height: clue.height } }));
   chooseRandomCharacter();
   resetAmbient();
   hideLevelComplete();
+  showLevelIntro();
   updateUI();
-  render();
-}
-
-function beginLevelPlay() {
-  if (state.mode !== "level_intro") return;
-  characterPanel.classList.add("hidden");
-  characterPanel.setAttribute("aria-hidden", "true");
-  state.mode = "playing";
-  state.lastTimerTick = Date.now();
-  startTimer();
   render();
 }
 
@@ -247,18 +258,35 @@ function chooseRandomCharacter() {
   state.character = characters.length ? characters[Math.floor(Math.random() * characters.length)] : null;
   if (!state.character) {
     characterPanel.classList.add("hidden");
-    characterPanel.setAttribute("aria-hidden", "true");
     return;
   }
   const lines = state.character.lines || [];
   characterImage.src = state.character.image;
   characterImage.alt = state.character.name;
   characterName.textContent = state.character.name;
-  const levelIntro = getLevel().introText || "Search carefully before the trail goes cold.";
-  const characterWarning = lines[Math.floor(Math.random() * lines.length)] || "Search carefully.";
-  characterLine.textContent = `${characterWarning} ${levelIntro}`;
+  characterLine.textContent = getLevel().introText || lines[Math.floor(Math.random() * lines.length)] || "Search carefully.";
+  applyCharacterScale();
   characterPanel.classList.remove("hidden");
-  characterPanel.setAttribute("aria-hidden", "false");
+}
+
+function showLevelIntro() {
+  levelIntroOverlay.classList.remove("hidden");
+  levelIntroOverlay.setAttribute("aria-hidden", "false");
+  levelIntroStartButton.classList.remove("hidden");
+  characterPanel.classList.add("is-interactive");
+  characterPanel.classList.toggle("hidden", !state.character);
+}
+
+function beginLevelSearch() {
+  if (state.mode !== "level_intro") return;
+  levelIntroOverlay.classList.add("hidden");
+  levelIntroOverlay.setAttribute("aria-hidden", "true");
+  levelIntroStartButton.classList.add("hidden");
+  characterPanel.classList.remove("is-interactive");
+  characterPanel.classList.add("hidden");
+  state.mode = "playing";
+  startTimer();
+  render();
 }
 
 function startTimer() {
@@ -300,8 +328,6 @@ function collectClue(clue) {
 function showLevelComplete(success) {
   stopTimer();
   state.mode = success ? "complete" : "time_up";
-  characterPanel.classList.add("hidden");
-  characterPanel.setAttribute("aria-hidden", "true");
   const level = getLevel();
   if (success) playSound("levelComplete");
   state.runScore += state.score;
@@ -379,10 +405,21 @@ function handlePointerDown(event) {
   const point = getCanvasPoint(event);
   state.lastPointer = point;
   if (state.editorMode) {
+    const selected = getSelectedClue();
+    if (selected && isOnResizeHandle(selected, point.x, point.y)) {
+      state.resizeDragging = true;
+      state.dragging = false;
+      state.resizeStart = { x: selected.x, y: selected.y, width: selected.width, height: selected.height, pointerX: point.x, pointerY: point.y };
+      updateEditorOverlay();
+      render();
+      return;
+    }
+
     const clue = findClueAt(point.x, point.y, true);
     state.selectedClueId = clue ? clue.id : null;
     if (clue) {
       state.dragging = true;
+      state.resizeDragging = false;
       state.dragOffsetX = point.x - clue.x;
       state.dragOffsetY = point.y - clue.y;
     }
@@ -399,9 +436,22 @@ function handlePointerDown(event) {
 function handlePointerMove(event) {
   const point = getCanvasPoint(event);
   state.lastPointer = point;
-  if (!state.editorMode || !state.dragging) return;
+  if (!state.editorMode) return;
   const clue = getSelectedClue();
   if (!clue) return;
+
+  if (state.resizeDragging && state.resizeStart) {
+    const nextWidth = clamp(Math.round(state.resizeStart.width + (point.x - state.resizeStart.pointerX)), 12, BASE_WIDTH - clue.x);
+    const nextHeight = clamp(Math.round(state.resizeStart.height + (point.y - state.resizeStart.pointerY)), 12, BASE_HEIGHT - clue.y);
+    clue.width = nextWidth;
+    clue.height = nextHeight;
+    updateHitbox(clue);
+    updateEditorOverlay();
+    render();
+    return;
+  }
+
+  if (!state.dragging) return;
   clue.x = clamp(Math.round(point.x - state.dragOffsetX), 0, BASE_WIDTH - clue.width);
   clue.y = clamp(Math.round(point.y - state.dragOffsetY), 0, BASE_HEIGHT - clue.height);
   updateHitbox(clue);
@@ -411,6 +461,8 @@ function handlePointerMove(event) {
 
 function endDrag() {
   state.dragging = false;
+  state.resizeDragging = false;
+  state.resizeStart = null;
 }
 
 function handleKeyDown(event) {
@@ -443,6 +495,10 @@ function handleKeyDown(event) {
     event.preventDefault(); rotateSelectedClue(-5);
   } else if (key === "]") {
     event.preventDefault(); rotateSelectedClue(5);
+  } else if (key === "Delete" || key === "Backspace") {
+    event.preventDefault(); deleteSelectedZone();
+  } else if (lower === "z") {
+    event.preventDefault(); addEditorZone();
   } else if (lower === "c") {
     event.preventDefault(); openExportPanel(buildSelectedClueExport());
   } else if (lower === "x") {
@@ -470,6 +526,74 @@ function rotateSelectedClue(delta) {
   const clue = getSelectedClue();
   if (!clue) return;
   clue.rotation = Math.round((clue.rotation || 0) + delta);
+}
+
+function addEditorZone() {
+  const level = getLevel();
+  const index = level.clues.length + 1;
+  const id = makeUniqueClueId(`zone_${index}`);
+  const zone = {
+    id,
+    name: `New Zone ${index}`,
+    image: "",
+    x: clamp(Math.round(state.lastPointer.x - 60), 0, BASE_WIDTH - 120),
+    y: clamp(Math.round(state.lastPointer.y - 35), 0, BASE_HEIGHT - 70),
+    width: 120,
+    height: 70,
+    rotation: 0,
+    hitbox: null
+  };
+  updateHitbox(zone);
+  state.runtimeClues.push(zone);
+  level.clues.push(clueToData(zone));
+  state.selectedClueId = zone.id;
+  updateUI();
+  updateEditorOverlay();
+  render();
+}
+
+function deleteSelectedZone() {
+  const clue = getSelectedClue();
+  if (!clue) return;
+  state.runtimeClues = state.runtimeClues.filter((item) => item.id !== clue.id);
+  const level = getLevel();
+  level.clues = level.clues.filter((item) => item.id !== clue.id);
+  state.foundClues.delete(clue.id);
+  state.selectedClueId = null;
+  updateUI();
+  updateEditorOverlay();
+  render();
+}
+
+function makeUniqueClueId(base) {
+  const taken = new Set(getLevel().clues.map((clue) => clue.id));
+  let id = base.toLowerCase().replace(/[^a-z0-9_]+/g, "_").replace(/^_+|_+$/g, "") || "zone";
+  let suffix = 1;
+  while (taken.has(id)) {
+    suffix += 1;
+    id = `${base}_${suffix}`;
+  }
+  return id;
+}
+
+function resizeCurrentCharacter(factor) {
+  if (!state.character) return;
+  const nextScale = clamp(Number(state.character.scale || 1) * factor, 0.55, 1.55);
+  state.character.scale = Math.round(nextScale * 100) / 100;
+  const stored = editorData.characters.find((character) => character.id === state.character.id);
+  if (stored) stored.scale = state.character.scale;
+  applyCharacterScale();
+  updateEditorOverlay();
+}
+
+function applyCharacterScale() {
+  const scale = state.character ? Number(state.character.scale || 1) : 1;
+  characterPanel.style.setProperty("--character-scale", String(scale));
+}
+
+function isOnResizeHandle(clue, x, y) {
+  const size = 28;
+  return x >= clue.x + clue.width - size && x <= clue.x + clue.width + size && y >= clue.y + clue.height - size && y <= clue.y + clue.height + size;
 }
 
 function getSelectedClue() {
@@ -547,7 +671,11 @@ function submitEditorCode() {
 }
 
 function enterEditor() {
+  if (!state.runtimeClues.length) {
+    state.runtimeClues = getLevel().clues.map((clue) => ({ ...deepClone(clue), hitbox: { x: clue.x, y: clue.y, width: clue.width, height: clue.height } }));
+  }
   state.editorMode = true;
+  levelIntroStartButton.classList.add("hidden");
   stopTimer();
   document.body.classList.add("editor-active");
   updateEditorOverlay();
@@ -559,26 +687,30 @@ function exitEditor() {
   state.editorMode = false;
   document.body.classList.remove("editor-active");
   editorHelpOverlay.classList.add("hidden");
+  if (state.mode === "level_intro") {
+    levelIntroStartButton.classList.remove("hidden");
+    characterPanel.classList.add("is-interactive");
+  }
   openExportPanel(buildDataJsExport());
 }
 
 function updateEditorOverlay() {
   editorHelpOverlay.classList.toggle("hidden", !state.editorMode);
   const clue = getSelectedClue();
-  editorModeLabel.textContent = clue ? `EDITOR: ${clue.id} x:${clue.x} y:${clue.y} w:${clue.width} h:${clue.height} r:${clue.rotation || 0}` : "EDITOR: CLUES";
+  const characterScale = state.character ? ` · character ${Number(state.character.scale || 1).toFixed(2)}x` : "";
+  editorModeLabel.textContent = clue ? `EDITOR: ${clue.id} x:${clue.x} y:${clue.y} w:${clue.width} h:${clue.height} r:${clue.rotation || 0}${characterScale}` : `EDITOR: CLUES${characterScale}`;
 }
 
 function syncRuntimeToData() {
   const level = getLevel();
-  state.runtimeClues.forEach((runtime) => {
-    const clue = level.clues.find((item) => item.id === runtime.id);
-    if (!clue) return;
-    clue.x = Math.round(runtime.x);
-    clue.y = Math.round(runtime.y);
-    clue.width = Math.round(runtime.width);
-    clue.height = Math.round(runtime.height);
-    clue.rotation = Math.round(runtime.rotation || 0);
-  });
+  level.clues = state.runtimeClues.map((runtime) => ({
+    ...clueToData(runtime),
+    x: Math.round(runtime.x),
+    y: Math.round(runtime.y),
+    width: Math.round(runtime.width),
+    height: Math.round(runtime.height),
+    rotation: Math.round(runtime.rotation || 0)
+  }));
 }
 
 function startAnimationLoop() {
@@ -740,6 +872,13 @@ function drawEditorHitboxes() {
     ctx.lineWidth = selected ? 4 : 2;
     ctx.fillRect(clue.x, clue.y, clue.width, clue.height);
     ctx.strokeRect(clue.x, clue.y, clue.width, clue.height);
+    if (selected) {
+      ctx.fillStyle = "rgba(255,230,80,.95)";
+      ctx.fillRect(clue.x + clue.width - 12, clue.y + clue.height - 12, 12, 12);
+      ctx.strokeStyle = "rgba(20,14,10,.9)";
+      ctx.lineWidth = 2;
+      ctx.strokeRect(clue.x + clue.width - 12, clue.y + clue.height - 12, 12, 12);
+    }
   });
   ctx.restore();
 }
@@ -785,6 +924,28 @@ function downloadTextFile(filename, text) {
   link.click();
   link.remove();
   URL.revokeObjectURL(url);
+}
+
+function updateRotateButton() {
+  const isMobile = window.matchMedia("(pointer: coarse)").matches || window.innerWidth <= 760;
+  const isPortrait = window.innerHeight > window.innerWidth;
+  rotateLandscapeButton.classList.toggle("hidden", !(isMobile && isPortrait));
+}
+
+async function forceLandscapeMode() {
+  try {
+    if (document.documentElement.requestFullscreen && !document.fullscreenElement) {
+      await document.documentElement.requestFullscreen();
+    }
+    if (screen.orientation && screen.orientation.lock) {
+      await screen.orientation.lock("landscape");
+    }
+    rotateLandscapeButton.textContent = "Horizontal Mode On";
+  } catch (_) {
+    rotateLandscapeButton.textContent = "Rotate Phone Horizontally";
+  } finally {
+    updateRotateButton();
+  }
 }
 
 function deepClone(value) { return JSON.parse(JSON.stringify(value)); }

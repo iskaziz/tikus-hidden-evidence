@@ -1,84 +1,50 @@
-/*
-  TIKUS: Hidden Evidence
-  data.js
-
-  Eye-level hidden-object prototype.
-  Clean two-level build:
-  - Sitting Room
-  - Kitchen
-*/
-
 const GAME_DATA = {
-  settings: {
-    gameTitle: "TIKUS: Hidden Evidence",
-    baseWidth: 1280,
-    baseHeight: 720,
-    timerDurationSeconds: 25,
-    clueScale: 1,
-    scorePerClue: 100,
-    editorAccessCode: "0707"
+  canvas: { width: 1920, height: 1080 },
+  timerSeconds: 30,
+  scoring: {
+    clue: 10,
+    timeBonus: 2,
+    missingPenalty: 2
   },
-
-  characters: [
-    {
-      id: "nervous_guest",
-      name: "The Nervous Guest",
-      image: "assets/characters/character_banana_man.png",
-      lines: [
-        "The room is watching us back.",
-        "I swear that object was not there before.",
-        "Look carefully. Someone wanted this to be found."
-      ]
-    },
-    {
-      id: "watchful_host",
-      name: "The Watchful Host",
-      image: "assets/characters/character_kebaya_woman.png",
-      lines: [
-        "This house keeps old secrets in plain sight.",
-        "Do not trust the neatness. It is usually staged.",
-        "Evidence has a way of glowing when the guilty panic."
-      ]
-    }
-  ],
-
+  clues: {
+    knife: { label: "Knife", asset: "assets/clues/knife.png" },
+    keris: { label: "Keris", asset: "assets/clues/keris.png" },
+    handgun: { label: "Handgun", asset: "assets/clues/handgun.png" },
+    metal_pipe: { label: "Metal Pipe", asset: "assets/clues/metal_pipe.png" },
+    old_telephone_cord: { label: "Old Telephone Cord", asset: "assets/clues/old_telephone_cord.png" },
+    candlestick: { label: "Candlestick", asset: "assets/clues/candlestick.png" }
+  },
   levels: [
     {
-      id: "sitting_room",
-      name: "Sitting Room",
-      roomImage: "assets/rooms/sitting_room_bg.png",
-      introText: "Search the sitting room for weapons and suspicious objects before time runs out.",
-      ambient: {
-        lights: [
-          { id: "sitting_lamp_glow", x: 300, y: 180, radius: 360, color: "rgba(255,205,120,0.30)", flickerAmount: 0.10, speed: 1.5 },
-          { id: "sitting_window_haze", x: 930, y: 210, radius: 420, color: "rgba(190,210,255,0.14)", flickerAmount: 0.04, speed: 0.8 }
-        ],
-        dust: { enabled: true, count: 70, speed: 14, opacity: 0.28, drift: 16 }
-      },
+      id: "kitchen",
+      name: "KITCHEN",
+      background: "assets/rooms/kitchen_bg.png",
+      startTitle: "Kitchen: Something in the shadows",
+      startMessage: "The rain keeps the retreat sealed in. Search Mimi's kitchen for six suspicious objects before the trail goes cold.",
+      completeTitle: "Kitchen Evidence Report",
       clues: [
-        { id: "keris", name: "Keris", image: "assets/clues/keris.png", x: 312, y: 486, width: 120, height: 42, rotation: -12 },
-        { id: "handgun", name: "Handgun", image: "assets/clues/handgun.png", x: 738, y: 512, width: 96, height: 58, rotation: 7 },
-        { id: "telephone_cord", name: "Telephone Cord", image: "assets/clues/telephone_cord.png", x: 950, y: 330, width: 130, height: 70, rotation: 0 },
-        { id: "candlestick", name: "Candlestick", image: "assets/clues/candlestick.png", x: 575, y: 270, width: 56, height: 128, rotation: -3 }
+        { id: "knife", center: { x: 670, y: 455 }, bbox: { x: 582, y: 371, w: 175, h: 167 }, rotation: -14, size: 145, opacity: 1, note: "rear counter under the cabinet light" },
+        { id: "keris", center: { x: 1110, y: 860 }, bbox: { x: 1013, y: 759, w: 194, h: 201 }, rotation: 26, size: 155, opacity: 1, note: "mosaic floor near the doorway shadow" },
+        { id: "handgun", center: { x: 895, y: 685 }, bbox: { x: 829, y: 621, w: 132, h: 127 }, rotation: -7, size: 118, opacity: 1, note: "under the rear table edge" },
+        { id: "metal_pipe", center: { x: 1605, y: 700 }, bbox: { x: 1495, y: 611, w: 220, h: 178 }, rotation: 17, size: 190, opacity: 1, note: "along the stainless sink line" },
+        { id: "old_telephone_cord", center: { x: 118, y: 350 }, bbox: { x: 35, y: 281, w: 166, h: 137 }, rotation: -8, size: 150, opacity: 1, note: "blended with the left wall wires" },
+        { id: "candlestick", center: { x: 930, y: 320 }, bbox: { x: 898, y: 259, w: 64, h: 122 }, rotation: 1, size: 120, opacity: 1, note: "tucked near the cabinet and fridge" }
       ]
     },
     {
-      id: "kitchen",
-      name: "Kitchen",
-      roomImage: "assets/rooms/kitchen_bg.png",
-      introText: "Search the kitchen for improvised weapons and signs of a hurried cover-up.",
-      ambient: {
-        lights: [
-          { id: "kitchen_fluorescent", x: 640, y: 115, radius: 470, color: "rgba(220,245,255,0.32)", flickerAmount: 0.18, speed: 3.8 },
-          { id: "kitchen_counter_glow", x: 760, y: 390, radius: 310, color: "rgba(255,230,170,0.18)", flickerAmount: 0.06, speed: 1.1 }
-        ],
-        dust: { enabled: true, count: 60, speed: 13, opacity: 0.26, drift: 14 }
-      },
+      id: "sitting_room",
+      name: "SITTING ROOM",
+      background: "assets/rooms/sitting_room_bg.png",
+      startTitle: "Sitting Room: The house remembers",
+      startMessage: "The old bungalow feels calm, but every corner has a secret. Find the remaining evidence before the room turns against you.",
+      completeTitle: "Sitting Room Evidence Report",
       clues: [
-        { id: "knife", name: "Knife", image: "assets/clues/knife.png", x: 470, y: 420, width: 112, height: 36, rotation: -8 },
-        { id: "metal_pipe", name: "Metal Pipe", image: "assets/clues/metal_pipe.png", x: 850, y: 560, width: 150, height: 42, rotation: 12 },
-        { id: "candlestick", name: "Candlestick", image: "assets/clues/candlestick.png", x: 1015, y: 318, width: 56, height: 128, rotation: 5 },
-        { id: "telephone_cord", name: "Telephone Cord", image: "assets/clues/telephone_cord.png", x: 250, y: 545, width: 130, height: 70, rotation: -18 }
+        { id: "knife", center: { x: 1085, y: 800 }, bbox: { x: 999, y: 716, w: 171, h: 167 }, rotation: -21, size: 135, opacity: 1, note: "low on the red rug under the coffee table" },
+        { id: "keris", center: { x: 1515, y: 240 }, bbox: { x: 1403, y: 130, w: 223, h: 219 }, rotation: -53, size: 165, opacity: 1, note: "following the stair and railing shadows" },
+        { id: "handgun", center: { x: 1655, y: 742 }, bbox: { x: 1589, y: 678, w: 132, h: 127 }, rotation: -7, size: 118, opacity: 1, note: "near the right armchair floor shadow" },
+        { id: "metal_pipe", center: { x: 1395, y: 310 }, bbox: { x: 1295, y: 219, w: 199, h: 181 }, rotation: 31, size: 165, opacity: 1, note: "parallel with the staircase structure" },
+        { id: "old_telephone_cord", center: { x: 520, y: 832 }, bbox: { x: 440, y: 763, w: 160, h: 138 }, rotation: 12, size: 140, opacity: 1, note: "coiled near sofa legs" },
+        { id: "candlestick", center: { x: 170, y: 592 }, bbox: { x: 136, y: 530, w: 68, h: 124 }, rotation: -3, size: 120, opacity: 1, note: "on the left console table" }
       ]
     }
   ]

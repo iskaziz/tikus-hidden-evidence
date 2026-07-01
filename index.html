@@ -1,119 +1,56 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <title>TIKUS: Hidden Evidence</title>
   <link rel="stylesheet" href="style.css" />
 </head>
 <body>
-  <main id="appShell" class="app-shell">
-    <section class="stage-column" aria-label="TIKUS hidden object game">
-      <div id="canvasFrame" class="canvas-frame">
-        <canvas id="gameCanvas" width="1280" height="720" aria-label="Hidden object room canvas"></canvas>
+  <div id="gameShell">
+    <header class="game-header">
+      <div class="brand-block" aria-label="Feisk Productions">
+        <img class="feisk-logo-img" src="assets/ui/Feisk Logo.png" alt="Feisk Productions" />
+      </div>
 
-        <img id="feiskLogoButton" class="feisk-logo" src="assets/ui/Feisk Logo.png" alt="Feisk logo" role="button" tabindex="0" aria-label="Developer access" />
+      <div class="header-spacer" aria-hidden="true"></div>
 
-        <div id="statsOverlay" class="stats-overlay" aria-label="Game stats">
-          <div class="stat-pill timer-pill"><span>Time</span><strong id="timerValue">25</strong></div>
-          <div class="stat-pill"><span>Score</span><strong id="scoreValue">0</strong></div>
-        </div>
+      <div class="hud" aria-label="Game status">
+        <div class="hud-item"><span>Score</span><strong id="scoreText">0</strong></div>
+        <div class="hud-item"><span>Time</span><strong id="timerText">30</strong></div>
+      </div>
+    </header>
 
-        <button id="rotateLandscapeButton" class="rotate-landscape-button hidden" type="button">Rotate Horizontal</button>
+    <main id="stageWrap">
+      <canvas id="gameCanvas" width="1920" height="1080" aria-label="Hidden object level"></canvas>
+      <div id="levelName" class="level-badge">SAMASIHAT WELLNESS RETREAT</div>
+      <canvas id="effectsCanvas" width="1920" height="1080" aria-hidden="true"></canvas>
 
-        <div id="characterPanel" class="character-panel hidden" aria-hidden="true">
-          <img id="characterImage" class="character-image" src="" alt="" />
-          <div class="character-speech">
-            <strong id="characterName"></strong>
-            <span id="characterLine"></span>
-            <button id="levelIntroStartButton" class="speech-start-button hidden" type="button">Start Search</button>
-          </div>
-        </div>
-
-        <div id="levelIntroOverlay" class="level-intro-overlay hidden" aria-hidden="true"></div>
-
-        <div id="mainMenuOverlay" class="screen-overlay">
-          <div class="message-card">
-            <span class="card-kicker">Samasihat Wellness Retreat</span>
-            <h1>TIKUS: Hidden Evidence</h1>
-            <p>Search each eye-level room, find every clue, and complete the evidence report before time runs out.</p>
-            <button id="startGameButton" type="button">Start Game</button>
-          </div>
-        </div>
-
-        <div id="levelCompleteOverlay" class="screen-overlay hidden">
-          <div class="message-card">
-            <h2 id="completeTitle">Level Complete</h2>
-            <p id="completeMessage">The evidence in this room has been collected.</p>
-            <div id="levelReport" class="level-report"></div>
-            <div class="button-row">
-              <button id="restartButton" type="button">Restart Level</button>
-              <button id="nextLevelButton" type="button">Next Room</button>
-            </div>
-          </div>
-        </div>
-
-        <div id="editorHelpOverlay" class="editor-help-overlay hidden">
-          <strong id="editorModeLabel">EDITOR: CLUES</strong>
-          <span>Drag zones to move them. Drag a selected zone corner to resize.</span>
-          <div class="editor-tool-row">
-            <button id="addZoneButton" type="button">Add Zone</button>
-            <button id="deleteZoneButton" type="button">Delete Zone</button>
-            <button id="resizeZoneButton" type="button">Resize Zone</button>
-            <button id="characterShrinkButton" type="button">Character −</button>
-            <button id="characterGrowButton" type="button">Character +</button>
-          </div>
-          <span>Arrow keys nudge · Shift+Arrows x10 · - / = resize · [ / ] rotate · Delete removes zone</span>
-          <span>C copy selected · X export data.js · E exit editor/export · Esc deselect</span>
-        </div>
-
-        <div id="editorKeypadModal" class="editor-keypad-modal hidden" role="dialog" aria-modal="true">
-          <div class="editor-keypad-card">
-            <button id="closeEditorKeypadButton" class="icon-button" type="button" aria-label="Close">×</button>
-            <h2>Developer Access</h2>
-            <p>Enter access code.</p>
-            <div id="editorCodeDisplay" class="editor-code-display">○○○○</div>
-            <div class="editor-keypad-grid">
-              <button type="button" data-keypad-number="1">1</button>
-              <button type="button" data-keypad-number="2">2</button>
-              <button type="button" data-keypad-number="3">3</button>
-              <button type="button" data-keypad-number="4">4</button>
-              <button type="button" data-keypad-number="5">5</button>
-              <button type="button" data-keypad-number="6">6</button>
-              <button type="button" data-keypad-number="7">7</button>
-              <button type="button" data-keypad-number="8">8</button>
-              <button type="button" data-keypad-number="9">9</button>
-              <button id="clearEditorCodeButton" type="button">Clear</button>
-              <button type="button" data-keypad-number="0">0</button>
-              <button id="submitEditorCodeButton" type="button">Enter</button>
-            </div>
-            <p id="editorKeypadStatus" class="editor-keypad-status"></p>
-          </div>
-        </div>
-
-        <div id="exportModal" class="export-modal hidden" role="dialog" aria-modal="true">
-          <div class="export-card">
-            <div class="export-header">
-              <h2>Export Data</h2>
-              <button id="closeExportButton" class="icon-button" type="button" aria-label="Close export">×</button>
-            </div>
-            <textarea id="exportText" spellcheck="false"></textarea>
-            <div class="button-row">
-              <button id="copyExportButton" type="button">Copy</button>
-              <button id="downloadDataButton" type="button">Download data.js</button>
-            </div>
-            <p id="exportStatus" class="export-status"></p>
-          </div>
+      <div id="mobileRotatePrompt" class="rotate-prompt hidden">
+        <div class="modal-card small-card">
+          <h2>Landscape Recommended</h2>
+          <p>This case is best played horizontally on mobile.</p>
+          <button id="rotateBtn" class="primary-btn">Go Landscape</button>
         </div>
       </div>
 
-      <footer class="clue-footer" aria-label="Clues to find">
-        <div class="clue-footer-title">Find</div>
-        <ul id="clueList" class="clue-footer-list"></ul>
-        <div id="roomNameBadge" class="room-name-badge">SITTING ROOM</div>
-      </footer>
-    </section>
-  </main>
+      <div id="messageOverlay" class="overlay">
+        <div class="character-card" aria-hidden="true">
+          <div class="detective-silhouette"></div>
+        </div>
+        <section class="modal-card" role="dialog" aria-modal="true" aria-labelledby="overlayTitle">
+          <h2 id="overlayTitle">Welcome to Samasihat</h2>
+          <p id="overlayText">Find the hidden evidence before time runs out.</p>
+          <div class="button-row" id="overlayButtons"></div>
+        </section>
+      </div>
+    </main>
+
+    <footer class="clue-footer" aria-label="Clue list">
+      <div class="clue-label">Clue List</div>
+      <ul id="clueList"></ul>
+    </footer>
+  </div>
 
   <script src="data.js"></script>
   <script src="game.js"></script>

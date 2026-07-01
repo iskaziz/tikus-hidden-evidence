@@ -8,22 +8,10 @@
 </head>
 <body>
   <div id="gameShell">
-    <header class="game-header">
-      <div class="brand-block" aria-label="Feisk Productions">
-        <img class="feisk-logo-img" src="assets/ui/Feisk Logo.png" alt="Feisk Productions" />
-      </div>
-
-      <div class="header-spacer" aria-hidden="true"></div>
-
-      <div class="hud" aria-label="Game status">
-        <div class="hud-item"><span>Score</span><strong id="scoreText">0</strong></div>
-        <div class="hud-item"><span>Time</span><strong id="timerText">30</strong></div>
-      </div>
-    </header>
-
     <main id="stageWrap">
       <canvas id="gameCanvas" width="1920" height="1080" aria-label="Hidden object level"></canvas>
       <div id="levelName" class="level-badge">SAMASIHAT WELLNESS RETREAT</div>
+      <div class="screen-score" aria-label="Score">Score <strong id="scoreText">0</strong></div>
       <canvas id="effectsCanvas" width="1920" height="1080" aria-hidden="true"></canvas>
 
       <div id="mobileRotatePrompt" class="rotate-prompt hidden">
@@ -36,7 +24,7 @@
 
       <div id="messageOverlay" class="overlay">
         <div class="character-card" aria-hidden="true">
-          <div class="detective-silhouette"></div>
+          <img id="messageCharacter" class="message-character" src="" alt="" />
         </div>
         <section class="modal-card" role="dialog" aria-modal="true" aria-labelledby="overlayTitle">
           <h2 id="overlayTitle">Welcome to Samasihat</h2>
@@ -47,8 +35,11 @@
     </main>
 
     <footer class="clue-footer" aria-label="Clue list">
-      <div class="clue-label">Clue List</div>
+      <div class="footer-logo" aria-label="Feisk Productions">
+        <img class="feisk-logo-img" src="assets/ui/Feisk Logo.png" alt="Feisk Productions" />
+      </div>
       <ul id="clueList"></ul>
+      <div class="footer-timer" aria-label="Timer">Time <strong id="timerText">30</strong></div>
     </footer>
   </div>
 

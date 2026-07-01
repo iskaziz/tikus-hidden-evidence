@@ -16,6 +16,7 @@
   const overlayButtons = document.getElementById('overlayButtons');
   const rotatePrompt = document.getElementById('mobileRotatePrompt');
   const rotateBtn = document.getElementById('rotateBtn');
+  const messageCharacterEl = document.getElementById('messageCharacter');
 
   const state = {
     levelIndex: 0,
@@ -26,8 +27,10 @@
     completedAll: false,
     lastTimestamp: 0,
     levelEnded: false,
+    initialStartShown: false,
     wiggleActive: false,
-    foundBursts: []
+    foundBursts: [],
+    levelCharacters: new Map()
   };
 
   const images = new Map();
@@ -37,8 +40,8 @@
 
   preload().then(() => {
     bindEvents();
-    updateMobilePrompt();
-    showStartScreen();
+    renderStaticFrame();
+    handleMobileStartGate();
     requestAnimationFrame(loop);
   });
 
@@ -57,8 +60,12 @@
 
   function bindEvents() {
     canvas.addEventListener('pointerdown', onPointerDown);
-    window.addEventListener('resize', updateMobilePrompt);
-    window.addEventListener('orientationchange', updateMobilePrompt);
+    window.addEventListener('resize', handleMobileStartGate);
+    window.addEventListener('orientationchange', handleMobileStartGate);
+
+    if (messageCharacterEl) {
+      messageCharacterEl.addEventListener('error', () => messageCharacterEl.classList.add('missing'));
+    }
 
     rotateBtn.addEventListener('click', async () => {
       ensureAudio();
@@ -68,7 +75,7 @@
       } catch (err) {
         // Browser may block orientation lock. Fullscreen landscape prompt remains useful.
       }
-      updateMobilePrompt();
+      handleMobileStartGate();
     });
   }
 
@@ -76,11 +83,36 @@
     return GAME_DATA.levels[state.levelIndex];
   }
 
+  function assignCharacterForLevel() {
+    const level = currentLevel();
+    if (!GAME_DATA.characters || GAME_DATA.characters.length === 0 || !messageCharacterEl) return;
+
+    if (!state.levelCharacters.has(level.id)) {
+      const previousLevel = GAME_DATA.levels[state.levelIndex - 1];
+      const previousCharacterId = previousLevel ? state.levelCharacters.get(previousLevel.id) : null;
+      let pool = GAME_DATA.characters;
+
+      if (pool.length > 1 && previousCharacterId) {
+        pool = pool.filter(character => character.id !== previousCharacterId);
+      }
+
+      const selected = pool[Math.floor(Math.random() * pool.length)];
+      state.levelCharacters.set(level.id, selected.id);
+    }
+
+    const selectedId = state.levelCharacters.get(level.id);
+    const character = GAME_DATA.characters.find(item => item.id === selectedId) || GAME_DATA.characters[0];
+    messageCharacterEl.src = character.asset;
+    messageCharacterEl.alt = character.alt || '';
+    messageCharacterEl.classList.remove('missing');
+  }
+
   function showStartScreen() {
     clearReportBreakdowns();
     const level = currentLevel();
     state.running = false;
     state.levelEnded = false;
+    assignCharacterForLevel();
     levelNameEl.textContent = level.name;
     overlayTitle.textContent = state.levelIndex === 0 ? 'Welcome to TIKUS: Hidden Evidence' : level.startTitle;
     overlayText.textContent = state.levelIndex === 0
@@ -141,7 +173,7 @@
 
   function getCanvasPoint(event) {
     const rect = canvas.getBoundingClientRect();
-    const scale = Math.min(rect.width / canvas.width, rect.height / canvas.height);
+    const scale = Math.max(rect.width / canvas.width, rect.height / canvas.height);
     const drawnW = canvas.width * scale;
     const drawnH = canvas.height * scale;
     const offsetX = (rect.width - drawnW) / 2;
@@ -256,6 +288,7 @@
     state.levelIndex = 0;
     state.score = 0;
     state.completedAll = false;
+    state.levelCharacters = new Map();
     state.found = new Set();
     state.timeLeft = GAME_DATA.timerSeconds;
     updateHud();
@@ -430,10 +463,30 @@
     p.life = Math.random() * 10;
   }
 
-  function updateMobilePrompt() {
+  function shouldShowRotatePrompt() {
     const isMobile = matchMedia('(pointer: coarse)').matches;
     const portrait = window.innerHeight > window.innerWidth;
-    rotatePrompt.classList.toggle('hidden', !(isMobile && portrait));
+    return isMobile && portrait;
+  }
+
+  function updateMobilePrompt() {
+    const showPrompt = shouldShowRotatePrompt();
+    rotatePrompt.classList.toggle('hidden', !showPrompt);
+    return showPrompt;
+  }
+
+  function handleMobileStartGate() {
+    const showPrompt = updateMobilePrompt();
+
+    if (showPrompt) {
+      overlay.classList.add('hidden');
+      return;
+    }
+
+    if (!state.initialStartShown && !state.running) {
+      state.initialStartShown = true;
+      showStartScreen();
+    }
   }
 
   function ensureAudio() {

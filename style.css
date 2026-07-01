@@ -1,8 +1,7 @@
 :root {
-  --header-h: 132px;
   --footer-h: 86px;
   --cream: #f4ead6;
-  --paper: rgba(244, 234, 214, 0.96);
+  --paper: rgba(244, 234, 214, 0.60);
   --ink: #251a11;
   --gold: #c59a4a;
   --dark: #100d0b;
@@ -31,98 +30,14 @@ button {
   width: 100vw;
   height: 100dvh;
   display: grid;
-  grid-template-rows: var(--header-h) 1fr var(--footer-h);
+  grid-template-rows: 1fr var(--footer-h);
   background: radial-gradient(circle at center, #2a2118, #080706 82%);
-}
-
-.game-header {
-  height: var(--header-h);
-  display: grid;
-  grid-template-columns: 340px 1fr 250px;
-  align-items: center;
-  gap: 16px;
-  padding: 10px 22px;
-  border-bottom: 2px solid rgba(197,154,74,.55);
-  background: linear-gradient(180deg, #1e140d, #0f0b08);
-  box-shadow: 0 4px 18px rgba(0,0,0,.65);
-  z-index: 5;
-}
-
-.brand-block {
-  height: 116px;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  overflow: hidden;
-}
-
-.feisk-logo-img {
-  display: block;
-  max-width: 100%;
-  max-height: 116px;
-  object-fit: contain;
-}
-
-.header-spacer {
-  min-width: 0;
-}
-
-.level-badge {
-  position: absolute;
-  left: 18px;
-  top: 18px;
-  transform: none;
-  z-index: 8;
-  max-width: min(46vw, 420px);
-  padding: 5px 14px;
-  border: 1px solid rgba(197,154,74,.68);
-  border-radius: 999px;
-  background: rgba(15, 10, 7, .72);
-  color: #f9e4b3;
-  font-size: clamp(11px, 1vw, 16px);
-  line-height: 1.05;
-  font-weight: 800;
-  text-transform: uppercase;
-  text-align: left;
-  letter-spacing: .13em;
-  text-shadow: 0 2px 0 #000;
-  box-shadow: 0 5px 20px rgba(0,0,0,.52);
-  pointer-events: none;
-}
-
-.hud {
-  display: flex;
-  justify-content: center;
-  gap: 10px;
-}
-
-.hud-item {
-  min-width: 94px;
-  padding: 7px 10px;
-  border: 1px solid rgba(197,154,74,.5);
-  background: rgba(0,0,0,.28);
-  text-align: center;
-}
-
-.hud-item span {
-  display: block;
-  color: rgba(244,234,214,.72);
-  font-size: 11px;
-  text-transform: uppercase;
-  letter-spacing: .12em;
-}
-
-.hud-item strong {
-  display: block;
-  color: #fff2c8;
-  font-size: 23px;
-  line-height: 1.05;
 }
 
 #stageWrap {
   position: relative;
   min-height: 0;
-  overflow: visible;
+  overflow: hidden;
   display: flex;
   justify-content: center;
   align-items: center;
@@ -133,9 +48,11 @@ button {
   position: absolute;
   width: 100%;
   height: 100%;
-  object-fit: contain;
+  object-fit: cover;
   image-rendering: auto;
 }
+
+#gameCanvas { z-index: 1; }
 
 #effectsCanvas {
   pointer-events: none;
@@ -143,29 +60,77 @@ button {
   mix-blend-mode: screen;
 }
 
-#gameCanvas { z-index: 1; }
+.level-badge {
+  position: absolute;
+  left: 18px;
+  top: 18px;
+  z-index: 8;
+  max-width: min(46vw, 420px);
+  padding: 5px 14px;
+  border: 1px solid rgba(197,154,74,.58);
+  border-radius: 999px;
+  background: rgba(15, 10, 7, .58);
+  color: #f9e4b3;
+  font-size: clamp(11px, 1vw, 15px);
+  line-height: 1.05;
+  font-weight: 800;
+  text-transform: uppercase;
+  text-align: left;
+  letter-spacing: .13em;
+  text-shadow: 0 2px 0 #000;
+  box-shadow: 0 5px 18px rgba(0,0,0,.42);
+  pointer-events: none;
+}
+
+.screen-score {
+  position: absolute;
+  right: 22px;
+  top: 18px;
+  z-index: 8;
+  color: #fff2c8;
+  font-size: clamp(13px, 1.25vw, 20px);
+  line-height: 1;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: .13em;
+  text-shadow: 0 2px 5px rgba(0,0,0,.9), 0 0 12px rgba(0,0,0,.75);
+  pointer-events: none;
+}
+
+.screen-score strong {
+  margin-left: 8px;
+  font-size: 1.2em;
+  color: #fff8dc;
+  font-variant-numeric: tabular-nums;
+}
 
 .clue-footer {
   height: var(--footer-h);
   display: grid;
-  grid-template-columns: 150px 1fr;
+  grid-template-columns: 190px 1fr 130px;
   align-items: center;
-  gap: 10px;
+  gap: 14px;
   padding: 10px 18px;
   border-top: 2px solid rgba(197,154,74,.55);
-  background: linear-gradient(180deg, #0e0a07, #21150e);
+  background: linear-gradient(180deg, rgba(14,10,7,.98), rgba(33,21,14,.98));
   z-index: 5;
 }
 
-.clue-label {
-  color: #f5d081;
-  text-transform: uppercase;
-  letter-spacing: .16em;
-  font-size: 13px;
-  border-right: 1px solid rgba(197,154,74,.45);
+.footer-logo {
   height: 100%;
   display: flex;
   align-items: center;
+  justify-content: flex-start;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.feisk-logo-img {
+  display: block;
+  width: auto;
+  max-width: 180px;
+  max-height: 68px;
+  object-fit: contain;
 }
 
 #clueList {
@@ -174,7 +139,7 @@ button {
   list-style: none;
   display: flex;
   flex-wrap: wrap;
-  gap: 8px;
+  gap: 10px 18px;
   align-items: center;
   justify-content: center;
   width: 100%;
@@ -182,28 +147,57 @@ button {
 }
 
 #clueList li {
-  padding: 8px 12px;
-  border: 1px solid rgba(197,154,74,.48);
-  background: rgba(244,234,214,.08);
+  padding: 0;
+  border: 0;
+  background: transparent;
   color: #f7e5bd;
-  border-radius: 999px;
-  font-size: 14px;
+  border-radius: 0;
+  font-size: 15px;
+  letter-spacing: .04em;
+  text-shadow: 0 2px 4px rgba(0,0,0,.8);
   transition: .25s ease;
+  white-space: nowrap;
 }
 
 #clueList li.found {
-  color: rgba(244,234,214,.43);
+  color: rgba(244,234,214,.42);
   text-decoration: line-through;
-  background: rgba(50,30,20,.32);
-  border-color: rgba(244,234,214,.22);
+  background: transparent;
   transform: scale(.96);
+}
+
+.footer-timer {
+  justify-self: end;
+  color: #fff2c8;
+  font-size: 13px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: .13em;
+  text-align: right;
+  text-shadow: 0 2px 5px rgba(0,0,0,.85);
+  white-space: nowrap;
+}
+
+.footer-timer strong {
+  display: inline-block;
+  min-width: 34px;
+  margin-left: 8px;
+  color: #fff8dc;
+  font-size: 24px;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+}
+
+.footer-timer strong.danger {
+  color: #ffb1a9;
+  text-shadow: 0 0 10px rgba(170, 33, 23, .75), 0 2px 5px rgba(0,0,0,.85);
 }
 
 .overlay, .rotate-prompt {
   position: absolute;
   inset: 0;
   z-index: 10;
-  background: radial-gradient(circle at 50% 40%, rgba(40,28,19,.52), rgba(0,0,0,.82));
+  background: radial-gradient(circle at 50% 40%, rgba(40,28,19,.42), rgba(0,0,0,.72));
   display: flex;
   justify-content: center;
   align-items: center;
@@ -212,6 +206,8 @@ button {
 
 .overlay.hidden, .rotate-prompt.hidden { display: none; }
 
+.rotate-prompt { z-index: 30; }
+
 .modal-card {
   max-width: min(720px, 92vw);
   width: fit-content;
@@ -219,8 +215,10 @@ button {
   padding: 22px 24px;
   color: var(--ink);
   background: var(--paper);
-  border: 1px solid rgba(123,85,38,.55);
-  box-shadow: 0 18px 50px rgba(0,0,0,.62), inset 0 1px 0 rgba(255,255,255,.42);
+  border: 1px solid rgba(123,85,38,.50);
+  border-radius: 2px;
+  backdrop-filter: blur(2px);
+  box-shadow: 0 18px 50px rgba(0,0,0,.62), inset 0 1px 0 rgba(255,255,255,.34);
   position: relative;
 }
 
@@ -228,8 +226,9 @@ button {
 
 .modal-card h2 {
   margin: 0 0 10px;
-  color: #4a2216;
+  color: #3d1c11;
   font-size: clamp(24px, 3vw, 38px);
+  text-shadow: 0 1px 0 rgba(255,255,255,.25);
 }
 
 .modal-card p {
@@ -244,10 +243,10 @@ button {
   display: grid;
   gap: 0;
   color: #2d1a10;
-  background: rgba(255, 250, 232, .42);
-  border: 1px solid rgba(74, 34, 22, .18);
-  border-radius: 14px;
-  box-shadow: inset 0 1px 0 rgba(255,255,255,.45);
+  background: rgba(255, 250, 232, .22);
+  border: 1px solid rgba(74, 34, 22, .16);
+  border-radius: 12px;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.28);
 }
 
 .report-row {
@@ -262,9 +261,7 @@ button {
   letter-spacing: .02em;
 }
 
-.report-row span {
-  color: rgba(45,26,16,.72);
-}
+.report-row span { color: rgba(45,26,16,.72); }
 
 .report-row strong {
   color: #3b2012;
@@ -312,60 +309,41 @@ button {
 
 .character-card {
   position: relative;
-  width: 96px;
-  height: 138px;
-  margin-right: -18px;
-  margin-top: 50px;
+  width: clamp(118px, 10vw, 190px);
+  height: clamp(190px, 22vw, 360px);
+  margin-right: -30px;
+  margin-top: 34px;
   z-index: 2;
-  filter: drop-shadow(0 7px 8px rgba(0,0,0,.45));
+  pointer-events: none;
+  filter: drop-shadow(0 12px 14px rgba(0,0,0,.58));
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
 }
 
-.detective-silhouette {
-  width: 78px;
-  height: 122px;
-  background: linear-gradient(180deg, #4d3321, #1c130e);
-  border: 2px solid #c59a4a;
-  border-radius: 42% 42% 12% 12%;
-  position: absolute;
-  bottom: 0;
-  left: 9px;
+.message-character {
+  display: block;
+  width: auto;
+  height: 100%;
+  max-width: 100%;
+  object-fit: contain;
+  object-position: bottom center;
 }
 
-.detective-silhouette::before {
-  content: "";
-  position: absolute;
-  left: 7px;
-  top: -22px;
-  width: 64px;
-  height: 34px;
-  border-radius: 50% 50% 38% 38%;
-  background: #241711;
-  border-top: 6px solid #c59a4a;
-}
-
-.detective-silhouette::after {
-  content: "";
-  position: absolute;
-  left: 26px;
-  top: 28px;
-  width: 26px;
-  height: 26px;
-  border-radius: 50%;
-  background: rgba(244,234,214,.72);
-  box-shadow: 0 0 20px rgba(244,234,214,.5);
-}
+.message-character.missing { display: none; }
 
 @media (max-width: 760px) {
-  :root { --header-h: 96px; --footer-h: 74px; }
-  .game-header { grid-template-columns: 196px 1fr 152px; padding: 6px 8px; gap: 8px; }
-  .brand-block { height: 88px; }
-  .feisk-logo-img { max-height: 88px; }
-  .level-badge { bottom: -16px; padding: 5px 12px; font-size: 12px; max-width: 66vw; }
-  .hud-item { min-width: 66px; padding: 5px 4px; }
-  .hud-item strong { font-size: 18px; }
-  .clue-footer { grid-template-columns: 74px 1fr; padding: 7px 8px; }
-  #clueList li { font-size: 11px; padding: 5px 8px; }
+  :root { --footer-h: 74px; }
+  .level-badge { left: 10px; top: 10px; padding: 4px 10px; font-size: 11px; max-width: 58vw; }
+  .screen-score { right: 10px; top: 10px; font-size: 12px; }
+  .clue-footer { grid-template-columns: 100px 1fr 82px; padding: 7px 8px; gap: 8px; }
+  .feisk-logo-img { max-width: 94px; max-height: 54px; }
+  #clueList { gap: 5px 9px; }
+  #clueList li { font-size: 10px; }
+  .footer-timer { font-size: 10px; letter-spacing: .08em; }
+  .footer-timer strong { min-width: 24px; margin-left: 4px; font-size: 18px; }
   .modal-card { min-width: min(320px, 92vw); padding: 18px; }
   .modal-card p { font-size: 15px; }
   .character-card { display: none; }
+  .report-row { min-width: min(300px, 78vw); }
 }

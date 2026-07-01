@@ -14,6 +14,15 @@ const GAME_DATA = {
     old_telephone_cord: { label: "Old Telephone Cord", asset: "assets/clues/old_telephone_cord.png" },
     candlestick: { label: "Candlestick", asset: "assets/clues/candlestick.png" }
   },
+  characters: [
+    { id: "sarong_man", asset: "assets/characters/sarong_man.png", alt: "Sarong man" },
+    { id: "black_tshirt_man", asset: "assets/characters/black_tshirt_man.png", alt: "Black T-shirt man" },
+    { id: "boho_woman", asset: "assets/characters/boho_woman.png", alt: "Boho woman" },
+    { id: "bald_man", asset: "assets/characters/bald_man.png", alt: "Bald man" },
+    { id: "headphones_woman", asset: "assets/characters/headphones_woman.png", alt: "Headphones woman" },
+    { id: "elder_woman", asset: "assets/characters/elder_woman.png", alt: "Elder woman" },
+    { id: "elder_man", asset: "assets/characters/elder_man.png", alt: "Elder man" }
+  ],
   levels: [
     {
       id: "kitchen",
